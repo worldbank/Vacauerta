@@ -141,8 +141,6 @@ def VacaMuerta(yr0 = 2020,
     responsiveness = {'prod_type':['Gas','Oil'],'rate':[gas_responsiveness,  oil_responsiveness]}
     responsiveness = pd.DataFrame(responsiveness)
 
-    well_response = {'prod_type':['Gas','Oil'],'rate':[gas_well_response,  oil_well_response]}
-    well_response = pd.DataFrame(well_response)
 
     ################################
     ##          Well Starts       ##

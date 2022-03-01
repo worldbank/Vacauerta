@@ -5,10 +5,9 @@ Last modified by Sara Turner on 8.18.2021
 '''
 
 #import warnings
-# #print("warnings gone")
 # warnings.simplefilter('ignore', ImportWarning)
 # warnings.filterwarnings('ignore', message='netlogo connector not available')
-print('hello')
+# print('hello')
 
 from ema_workbench import (Model, RealParameter,CategoricalParameter, IntegerParameter, TimeSeriesOutcome, ema_logging, perform_experiments)
 # from ema_workbench.connectors.excel import ExcelModel
@@ -40,7 +39,7 @@ outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\
 indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'
 # outdir = 'C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\'
 
-num_experiments = 100
+num_experiments = 8
 
 def VacaMuerta(yr0 = 2020, 
                 final_yr = 2050, 
@@ -141,9 +140,6 @@ def VacaMuerta(yr0 = 2020,
     responsiveness = {'prod_type':['Gas','Oil'],'rate':[gas_responsiveness,  oil_responsiveness]}
     responsiveness = pd.DataFrame(responsiveness)
 
-    well_response = {'prod_type':['Gas','Oil'],'rate':[gas_well_response,  oil_well_response]}
-    well_response = pd.DataFrame(well_response)
-
     ################################
     ##          Well Starts       ##
     ################################
@@ -153,8 +149,6 @@ def VacaMuerta(yr0 = 2020,
     well_starts['well_type'] = well_starts['well_type'].replace({'CONVENCIONAL':'Conventional', 'NO CONVENCIONAL':'Unconventional'}) 
     well_starts['avgd_starts'] = well_starts.groupby(['well_type','prod_type'])['starts'].transform(lambda x: x.rolling(3,1).mean())
     # well_starts.to_csv(outdir+'well_starts.csv')
-    # prices['Gas'] = prices.rolling(window=2)['Price Gas Bolivia']
-    # print(well_starts.head(20))
     #we use three types of well - conventional, shale, and tight. All threee produce both oil and gas, but in different proportions. have generated an indicator for gas and oil wells based on threshold of 6000cf/bbl or 33.922 thousand m3 gas/ m3 oil.  
     #this makes work conssitent with newell and prest who separated analysis by conventional and unconventional oil and gas. 
     # can use tipo_de_recurso and oil_or_gas to achieve the same breakout
@@ -228,7 +222,7 @@ def VacaMuerta(yr0 = 2020,
     #s_oil = s_gas.cumsum()
 
     prices['Cons Gas Local ktoe'] = (prices['Gas Local ktoe']/s_gas)
-    # print(prices['Cons Gas Local ktoe'])
+
     prices['Cons Oil Local ktoe'] = (prices['Oil Local ktoe']/s_oil)
 
     prices['expected_price_Conventional_Oil'] = prices['Oil ktoe']
@@ -241,7 +235,6 @@ def VacaMuerta(yr0 = 2020,
     prices['expected_local_price_Unconventional_Oil'] = prices['Oil Local ktoe']
     prices['expected_local_price_Unconventional_Gas'] = prices['Gas Local ktoe']
     # prices = prices.set_index('year')
-    # print(len(prices))
 
     # drop last rows
     n = len(prices)-(final_yr-yr0)-2
@@ -261,14 +254,13 @@ def VacaMuerta(yr0 = 2020,
 
     #load demand side elasticities
     ped = pd.read_csv(indir+"demand_elasticities.csv")
-    #print(ped.head())
 
     #load income forecast
     income = pd.read_csv(indir+"income.csv")
     income = income[['year',"POLES_USD2015/cap"]]
     income = income.rename(columns={"POLES_USD2015/cap": "Ln_GDPPC"})
     #ln_GCAM5.3_NGFS_Net Zero_USD2015/cap	ln_POLES_USD2015/cap
-    # print(income.head())
+
 
 
     demand_bal = demand_bal.rename( 
@@ -295,7 +287,6 @@ def VacaMuerta(yr0 = 2020,
             'cons_residential','cons_transport', 'cons_industry','cons_other' ]].T
     demand_bal.columns = demand_bal.iloc[0]
     demand_bal = demand_bal.iloc[1: , :]
-    #print(demand_bal.columns)
 
     collist = ['Energia Hidraulica_Primaria', 'Energia Nuclear_Primaria',
         'Carbon Mineral_Primaria', 'Lena_Primaria', 'Bagazo_Primaria',
@@ -319,9 +310,7 @@ def VacaMuerta(yr0 = 2020,
         'Biodiesel_Secondaria','TOTAL I_Primaria', 'TOTAL II_Secondaria']
     demand_bal = demand_bal.drop(collist, axis = 1)
 
-    # print(demand_bal)
     demand_bal= demand_bal.reset_index().rename(columns={'index': 'step'})
-    #demand_bal.to_csv(outdir+"simplified_balance.csv")
 
     primary_inflows = ['prim_prod','prim_imports','prim_adjust','prim_stockvar']
     secondary_inflows = ['prim_imports', 'prim_adjust','prim_stockvar']
@@ -329,24 +318,10 @@ def VacaMuerta(yr0 = 2020,
     p_s_outflows = ['prim_exports','prim_unapproved','trans_gas_treat','prim_losses','trans_electricity','trans_refinery',
     'trans_other','cons_own', 'cons_residential', 'cons_transport','cons_industry','cons_other']
 
-
-    #####################################
-    #      SAVE percent                ##
-    #####################################
-    # def safe_pct(s1,s2,p1,p2):
-    #     # print(x/y)
-    #     print('terror!')
-    #     if s1 and s2 and p1 and p2:  
-    #         print( "values exist!")
-    #     else:
-    #         print('dont exist!')
-    #     # return min(1.0,max(0,((s2/p2-s1/p1)/(s1/p1)))) if s1 and s2 and p1 and p2 else 1
-
     #####################################
     #      SAVE DIVISION               ##
     #####################################
     def safe_div(x,y):
-        # print(x/y)
         # return min(1,max(0,x/y)) if y else 1
         return max(0,x/y) if y else 1
 
@@ -379,7 +354,7 @@ def VacaMuerta(yr0 = 2020,
         except: 
                 i_flows = (bal[bal['step'].isin(secondary_inflows)][products[0]].squeeze()).sum()
                 o_flows = (bal[bal['step'].isin(outflows)][products[0]].squeeze()).sum()
-        # print(i_flows+o_flows)
+
         flow_share = bal[products]/i_flows
         flow_share['type']=type_cat
         return bal,flow_share 
@@ -387,12 +362,10 @@ def VacaMuerta(yr0 = 2020,
     oil_type = ['step','Petroleo_Primaria','petroleum_other_Secondaria']
     oil_products =['Petroleo_Primaria','petroleum_other_Secondaria']
 
-    # print('oil check:')
     oil_bal, oil_share = balance_processing(oil_type,oil_products,primary_inflows,secondary_inflows, p_s_outflows)
 
     gas_type = ['step', 'Gas Natural de Pozo_Primaria','Gas Distribuido por Redes_Secondaria']
     gas_products =['Gas Natural de Pozo_Primaria','Gas Distribuido por Redes_Secondaria']
-    # print('gas check:')
     gas_bal, gas_share = balance_processing(gas_type,gas_products,primary_inflows,secondary_inflows, p_s_outflows)
 
     e_type = ['step', 'Energia Electrica_Secondaria']
@@ -401,7 +374,6 @@ def VacaMuerta(yr0 = 2020,
     e_secondary_inflows = ['prim_imports','prim_adjust','prim_stockvar','trans_electricity']
     p_s_outflows = ['prim_exports','prim_unapproved','prim_losses', 'trans_gas_treat','trans_refinery',
     'trans_other','cons_own', 'cons_residential', 'cons_transport','cons_industry','cons_other']
-    # print('electricity check:')
     e_bal, e_share = balance_processing(e_type,e_products,e_primary_inflows,e_secondary_inflows, p_s_outflows)
 
     #########################################
@@ -447,9 +419,6 @@ def VacaMuerta(yr0 = 2020,
 
         # #opex - on production
         opex =(mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze())*opex_cost[opex_cost['product']==p]['opex'].squeeze()
-        # print(production)
-        # print((mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze()))
-        # print(opex_cost[opex_cost['product']==p]['opex'].squeeze())
 
         #domestic_revenue
         dom_rev = ((mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze())-exports[exports['year']==t]['exports_{}_{}'.format(w,k)].squeeze()-exports[exports['year']==t]['surplus_{}_{}'.format(w,k)].squeeze())*prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()
@@ -542,13 +511,11 @@ def VacaMuerta(yr0 = 2020,
     electricity_cons0 = el_rescons0+el_indcons0+el_transcons0+el_owncons0 + el_othercons0
     total_cons0 = gas_cons0+oil_cons0+electricity_cons0
 
-    # print(df.head())
     cons_df.loc[0] = [2020, gas_rescons0,gas_indcons0,gas_transcons0,gas_othercons0,gas_owncons0,gas_loss_adj0,oil_rescons0,oil_indcons0,oil_transcons0,oil_othercons0,oil_owncons0,oil_loss_adj0,
         el_rescons0,el_indcons0,el_transcons0,el_othercons0,el_owncons0,el_loss_adj0,gas_cons0,oil_cons0,electricity_cons0,total_cons0]
 
     #a is exogenous increase in energy efficiency
     prices = prices.reset_index()
-    # print(prices.head())
 
     gas_own_cons_share =  gas_owncons0/(gas_rescons0+gas_transcons0+gas_indcons0+gas_othercons0)
     oil_own_cons_share = oil_owncons0/(oil_rescons0+oil_transcons0+oil_indcons0+oil_othercons0)
@@ -595,7 +562,7 @@ def VacaMuerta(yr0 = 2020,
             ##PRODUCTION
             #starts
             prices = prices.set_index(['prod_type','year'])
-            # print(prices.head())
+
             well_starts
             wells0=well_starts[(well_starts["year"]==t)].reset_index().set_index('well_type')
 
@@ -605,8 +572,6 @@ def VacaMuerta(yr0 = 2020,
             df['starts'] = df['avgd_starts'].astype(float, errors = 'raise')
             df['product'] = df['product'].astype(str, errors = 'raise')
             df= df.reset_index().set_index(['prod_type','well_type','year','product'])
-            # print(df.head())
-            print('t0 done')
 
             initial_prod_2020_m3 = [2020,26230 ,18910,21321 , 6965]
 
@@ -659,15 +624,13 @@ def VacaMuerta(yr0 = 2020,
             for w in well_type:
                 for p in production_type:
                     for k in product: 
-                            #current loop  
-                        # print(str(t) +" "+ p + " " + w +" "+ k)
+
                         prices=prices.reset_index()
 
                         ex_share = export_share[export_share['prod_type']=='{}'.format(p)]['rate'].squeeze()
 
-                        #note this should be responsive to both exports and domestic prices - need to come and reactivate that
-                            #estimate current year well starts
-                            # s=round(df.loc[(p,w,t-1,k),'starts'] + df.loc[(p,w,t-1,k),'starts']*((prices.loc[(p,t),"value"] - prices.loc[(p,t-1),"value"])/prices.loc[(p,t-1),"value"])*pes.loc[p,"p_elast_supply"],0)
+                        #estimate current year well starts
+                        # s=round(df.loc[(p,w,t-1,k),'starts'] + df.loc[(p,w,t-1,k),'starts']*((prices.loc[(p,t),"value"] - prices.loc[(p,t-1),"value"])/prices.loc[(p,t-1),"value"])*pes.loc[p,"p_elast_supply"],0)
 
                         if w == "Unconventional":
                                 avg_s=round(np.maximum(df.loc[(p,w,t-1,k),'avgd_starts']+ 
@@ -721,13 +684,7 @@ def VacaMuerta(yr0 = 2020,
                         for sy in range(t,t+well_life):
                             pr=hyperbolic(sy-t,qi,b,di)*a_starts
                             h=[p,w,k,t,sy,a_starts,pr]
-                            prod_df.loc[sy-t]= h
-
-                        # print(str(t)+p+w+k+str(sy))
-                        # print(cumratio)
-                        # print(prod_df.loc[(prod_df["year"]==t)&(prod_df["prod_type"]==p)&(prod_df["well_type"]==w)&(prod_df["product"]==k),"production"])
-                        # prod_df.loc[(prod_df["year"]==t)&(prod_df["prod_type"]==p)&(prod_df["well_type"]=="Unconventional")&(prod_df["product"]==k),"production"] = (prod_df.loc[(prod_df["year"]==t)&(prod_df["prod_type"]==p)&(prod_df["well_type"]==w)&(prod_df["product"]==k),'production'].transform(lambda x: x*(1-cumratio)))
-                        # print(prod_df.loc[(prod_df["year"]==t)&(prod_df["prod_type"]==p)&(prod_df["well_type"]==w)&(prod_df["product"]==k),"production"]) 
+                            prod_df.loc[sy-t]= h 
 
                         pp = pp.append(prod_df)
                     
@@ -757,7 +714,6 @@ def VacaMuerta(yr0 = 2020,
             mp.index = mp.index + 1  # shifting index
             mp.sort_index(inplace=True) 
             mp = mp[yr0-yr0:final_yr-yr0+1]
-            # print(mp)
 
  
             conventional_gas_decline = np.linspace(conv_prod_decline_start, conv_prod_decline_end_oil,len(mp)).cumsum()
@@ -795,11 +751,7 @@ def VacaMuerta(yr0 = 2020,
             mp['Unconventional_Oil']= mp['Unconventional_Oil'] - mp['Unconventional_Oil'].transform(lambda x: max(x,0.00001))*unconventional_oil_decline
             
             mp.loc[mp['Unconventional_Oil'] <= 0, 'Unconventional_Oil'] =0
-            #except: 
-                #mp['Unonventional_Oil']=0
-            # print(mp['Unconventional_Oil'])
-            # except: 
-            # mp['Unonventional_Oil']=0
+
 
             mp['Gas_prod'] = mp['Conventional_Gas'] + mp['Unconventional_Gas']
             mp['Oil_prod'] = mp['Conventional_Oil'] + mp['Unconventional_Oil']
@@ -844,8 +796,6 @@ def VacaMuerta(yr0 = 2020,
             exports['imports_Conventional_Gas'] = exports['net_imports_Gas']-exports['imports_Unconventional_Gas']
             exports['imports_Conventional_Oil'] = exports['net_imports_Oil']-exports['imports_Unconventional_Oil']
 
-
-            # print(mp.head())
             prices = prices.reset_index()
 
             #used to append data and prep next year values
@@ -858,7 +808,6 @@ def VacaMuerta(yr0 = 2020,
                         fiscal = fiscal.append(fiscal_df)
 
                         #make responsive to changes in the surplus exports v imports
-                        
                         # ratio = safe_div(exports.loc[(exports['year']==t),'surplus_{}_{}'.format(w,k)].squeeze(),exports.loc[(exports['surplus_{}_{}'.format(w,k)]>1).idxmax,'surplus_{}_{}'.format(w,k)].squeeze())
                         ratio = safe_div(exports.loc[(exports['year']==t),'surplus_{}'.format(k)].squeeze(),exports.loc[(exports['year']==t),'{}_prod'.format(k)].squeeze())
 
@@ -867,7 +816,6 @@ def VacaMuerta(yr0 = 2020,
                         if exports.loc[(exports['year']==t),'surplus_{}'.format(k)].squeeze() > 1.0:
                             prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'] = (prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze() -
                                                                                                                                 (1-1/(1+ratio))*responsiveness[responsiveness['prod_type']=='{}'.format(k)]['rate'].squeeze()*prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'].squeeze())
-                        
                         
                         # (pow(ratio,well_response[well_response['prod_type']=='{}'.format(k)]['rate'].squeeze()))                                                                                                                    
                             prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'] = (prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze() -
@@ -881,10 +829,7 @@ def VacaMuerta(yr0 = 2020,
             for w in well_type: 
                 for p in production_type: 
                         #calculate new export shares
-                        export_share.loc[(export_share['prod_type']=='{}'.format(p)),'rate'] = safe_div(exports[(exports['year']==t)]['net_exports_{}'.format(p)].squeeze(),exports[(exports['year']==t)]['{}_prod'.format(p)].squeeze())
-                        # print('export share')
-                        # print(exports[(exports['year']==t)]['net_exports_{}'.format(p)].squeeze())
-                        # print(exports[(exports['year']==t)]['{}_prod'.format(p)].squeeze())                        
+                        export_share.loc[(export_share['prod_type']=='{}'.format(p)),'rate'] = safe_div(exports[(exports['year']==t)]['net_exports_{}'.format(p)].squeeze(),exports[(exports['year']==t)]['{}_prod'.format(p)].squeeze())                   
                       
     # prices.to_csv(outdir+'prices.csv')    
     #merge US capex with downstresam Fiscal befor calculating 
@@ -895,7 +840,6 @@ def VacaMuerta(yr0 = 2020,
     fiscal=fiscal.reset_index()
     fiscal['discount_factor'] = 1/(1*(1 + wacc)**(fiscal['year']-yr0-1))
     fiscal = fiscal.set_index(['year','well_type','product'])
-    # print(fiscal.head())
 
     finance = pd.DataFrame(index = fiscal.index)
 
@@ -921,35 +865,31 @@ def VacaMuerta(yr0 = 2020,
     unconv_share =(wells_output[1]+wells_output[3])/wells_total
     gas_share = wells_output[1]/(wells_output[1]+wells_output[3])
 
-    try: 
-        finance.to_csv(outdir+'finance_{}_{}.csv'.format(rcp, switch))
-        # npv.to_csv(outdir+'npv.csv_{}_{}.csv'.format(rcp, switch))
-        fiscal.to_csv(outdir+"fiscal_{}_{}.csv".format(rcp, switch))
-        cc.to_csv(outdir+"us_capex_{}_{}.csv".format(rcp, switch))
-        cons.to_csv(outdir+"consumption_{}_{}.csv".format(rcp, switch))
-        exports.to_csv(outdir+"exports_{}_{}.csv".format(rcp, switch))
-        #save outputs
-        #note this value is about 10k ktoe below minem for 2020 because it excludes own consumption. Could add to match + keep same going forward
-        cons_df.to_csv(outdir+'consumption forecast_{}_{}.csv'.format(rcp, switch))
-        # df.to_csv(outdir+'test_{}_{}.csv'.format(rcp, switch))
-        pp.to_csv(outdir+'production_per_well_year_{}_{}.csv'.format(rcp, switch))
-        prices.to_csv(outdir+"prices_{}_{}.csv".format(rcp, switch))
-        mp.to_csv(outdir+"production_{}_{}.csv".format(rcp, switch))
+    # try: 
+    #     finance.to_csv(outdir+'finance_{}_{}.csv'.format(rcp, switch))
+    #     # npv.to_csv(outdir+'npv.csv_{}_{}.csv'.format(rcp, switch))
+    #     fiscal.to_csv(outdir+"fiscal_{}_{}.csv".format(rcp, switch))
+    #     cc.to_csv(outdir+"us_capex_{}_{}.csv".format(rcp, switch))
+    #     cons.to_csv(outdir+"consumption_{}_{}.csv".format(rcp, switch))
+    #     exports.to_csv(outdir+"exports_{}_{}.csv".format(rcp, switch))
+    #     #save outputs
+    #     #note this value is about 10k ktoe below minem for 2020 because it excludes own consumption. Could add to match + keep same going forward
+    #     cons_df.to_csv(outdir+'consumption forecast_{}_{}.csv'.format(rcp, switch))
+    #     # df.to_csv(outdir+'test_{}_{}.csv'.format(rcp, switch))
+    #     pp.to_csv(outdir+'production_per_well_year_{}_{}.csv'.format(rcp, switch))
+    #     prices.to_csv(outdir+"prices_{}_{}.csv".format(rcp, switch))
+    #     mp.to_csv(outdir+"production_{}_{}.csv".format(rcp, switch))
 
-    except: 
-        print('open csv could not save results')
+    # except: 
+    #     print('open csv could not save results')
 
     #######################
     #   outputs for RDM   #
     #######################
 
-    # print('NPV as GDP')
     npv_gdp = (finance['disc_net_rev'].sum())/GDP*100
     npv_unsub_gdp = (finance['disc_net_unsub_rev'].sum())/GDP*100
 
-    # print(npv_gdp)
-
-    # print('subcomponent NPV')
     subcomponents_ft = finance.reset_index().groupby(['well_type','product'])['total gov transfers'].agg('sum')
     subcomponents_ft_gdp = finance.reset_index().groupby(['well_type','product'])['total gov transfers'].agg('sum')/GDP*100
     subcomponents_npv = finance.reset_index().groupby(['well_type','product'])['disc_net_rev'].agg('sum')
@@ -1068,7 +1008,6 @@ if __name__ == "__main__":
     experiments2.to_csv(outdir+"vm_experiments.csv")
     outcomes2.to_csv(outdir+"vm_outcomes.csv")
 
-
 #     policies = experiments['policy']
 #     print(policies)
 #     for i, policy in enumerate(np.unique(policies)):
@@ -1080,7 +1019,6 @@ if __name__ == "__main__":
     plt.savefig(outdir+'pairs.png', bbox_inches="tight")
     plt.clf()
 
-
     #feature scoring
     from ema_workbench.analysis import feature_scoring
 
@@ -1091,78 +1029,3 @@ if __name__ == "__main__":
     heatmap = sns.heatmap(fs, cmap='viridis', annot=True)
     # plt.show()
     plt.savefig(outdir+'feature_scoring.png', bbox_inches="tight")
-
-    # try: 
-    #     print('npv unconv gas')
-    #     y = outcomes['gdp_npv_unconv_gas'] < 0.0
-    #     prim_alg = prim.Prim(x, y, threshold=0.1)
-    #     box1 = prim_alg.find_box() 
-    #     box1.show_tradeoff()
-    #     box1.inspect(8)
-    #     box1.inspect(8, style='graph')
-    #     box1.show_pairs_scatter(8)
-    #     plt.savefig(outdir+'prim_npv_unconv_gas.png', bbox_inches="tight")
-    # except: 
-    #     print("no solutions in npv unconventional gas")
-    
-    # try: 
-    #     y = outcomes['gdp_ft_unconv_gas'] < 0.0
-    #     prim_alg = prim.Prim(x, y, threshold=0.1)
-    #     box1 = prim_alg.find_box() 
-    #     box1.show_tradeoff()
-    #     box1.inspect(8)
-    #     box1.inspect(8, style='graph')
-    #     box1.show_pairs_scatter(8)
-    #     plt.savefig(outdir+'prim_ft_unconv_gas.png')
-    # except: 
-    #     print("no solutions in ft unconventional gas")
-
-    # try: 
-    #     y = outcomes['gdp_npv_unconv_oil'] < 0.0
-    #     prim_alg = prim.Prim(x, y, threshold=0.1)
-    #     box1 = prim_alg.find_box() 
-    #     box1.show_tradeoff()
-    #     box1.inspect(8)
-    #     box1.inspect(8, style='graph')
-    #     box1.show_pairs_scatter(8)
-    #     plt.savefig(outdir+'prim_npv.png', bbox_inches="tight")
-    # except: 
-    #     print("no solutions in npv unconventional oil")
-
-    # try: 
-    #     y = outcomes['gdp_ft_unconv_oil'] < 0.0
-    #     prim_alg = prim.Prim(x, y, threshold=0.1)
-    #     box1 = prim_alg.find_box() 
-    #     box1.show_tradeoff()
-    #     box1.inspect(8)
-    #     box1.inspect(8, style='graph')
-    #     box1.show_pairs_scatter(8)
-    #     plt.savefig(outdir+'prim_ft_unconv_oil.png')
-    # except: 
-    #     print("no solutions in ft unconventional oil")
-
-    # try: 
-    #     y = (outcomes['gdp_ft_unconv_gas'] > 0.0) & (outcomes['gdp_npv_unconv_gas'] > 0.0)
-    #     prim_alg = prim.Prim(x, y, threshold=0.1)
-    #     box1 = prim_alg.find_box() 
-    #     box1.show_tradeoff()
-    #     box1.inspect(8)
-    #     box1.inspect(8, style='graph')
-    #     box1.show_pairs_scatter(8)
-    #     plt.savefig(outdir+'prim_ft_npv_unconv_gas.png')
-    # except: 
-    #     print("no solutions in npv & ft unconventional gas")
-        
-    # try: 
-    #     y = (outcomes['gdp_ft_unconv_oil'] > 0.0) & (outcomes['gdp_npv_unconv_oil'] > 0.0)
-    #     prim_alg = prim.Prim(x, y, threshold=0.1)
-    #     box1 = prim_alg.find_box() 
-    #     box1.show_tradeoff()
-    #     box1.inspect(8)
-    #     box1.inspect(8, style='graph')
-    #     box1.show_pairs_scatter(8)
-    #     plt.savefig(outdir+'prim_ft_npv_unconv_oil.png')
-    # except: 
-    #     print("no solutions in npv & ft unconventional oil")
-        
-    # plt.show()
