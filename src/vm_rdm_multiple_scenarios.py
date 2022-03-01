@@ -40,7 +40,7 @@ outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\
 indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'
 # outdir = 'C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\'
 
-num_experiments = 1000
+num_experiments = 100
 
 def VacaMuerta(yr0 = 2020, 
                 final_yr = 2050, 
@@ -109,9 +109,7 @@ def VacaMuerta(yr0 = 2020,
                 intl_wedge_end_oil = 1, 
                 well_life = 25,
                 oil_responsiveness = .01,
-                gas_responsiveness = .01,
-                oil_well_response = 1.2,
-                gas_well_response = 1.2):
+                gas_responsiveness = .01):
 
     # #supply side
     #format us capex
@@ -488,6 +486,7 @@ def VacaMuerta(yr0 = 2020,
         export_duties = duty_rate[duty_rate['prod_type']=='{}'.format(k)]['rate'].squeeze()*exports[exports['year']==t]['exports_{}_{}'.format(w,k)].squeeze()*prices[(prices['prod_type']=='{} ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()
         try: 
             if (prices[(prices['prod_type']=='{} ktoe'.format(k))&(prices['year']==t)]['value'].squeeze() <= p_thr[p_thr['prod_type']=='{}'.format(k)]['threshold'].squeeze()) & (prices[(prices['prod_type']=='{} ktoe'.format(k))&(prices['year']==t)]['value'].squeeze() > p_floor[p_floor['prod_type']=='{}'.format(k)]['threshold'].squeeze()) :
+                    #.24 is the slope of the function used to calculate export duties
                     export_duties = .24 * ((prices[(prices['prod_type']=='{} ktoe'.format(k))&(prices['year']==t)]['value'].squeeze() - p_floor[p_floor['prod_type']=='{}'.format(k)]['threshold'].squeeze())/p_floor[p_floor['prod_type']=='{}'.format(k)]['threshold'].squeeze())
             if exports[exports['year']==t]['exports_{}_{}'.format(w,k)].squeeze() <=0:
                     export_duties = 0
@@ -669,11 +668,9 @@ def VacaMuerta(yr0 = 2020,
                         #note this should be responsive to both exports and domestic prices - need to come and reactivate that
                             #estimate current year well starts
                             # s=round(df.loc[(p,w,t-1,k),'starts'] + df.loc[(p,w,t-1,k),'starts']*((prices.loc[(p,t),"value"] - prices.loc[(p,t-1),"value"])/prices.loc[(p,t-1),"value"])*pes.loc[p,"p_elast_supply"],0)
-                        
 
-                        
                         if w == "Unconventional":
-                                avg_s=np.maximum(0.0,round(df.loc[(p,w,t-1,k),'avgd_starts'] + 
+                                avg_s=round(np.maximum(df.loc[(p,w,t-1,k),'avgd_starts']+ 
                                     ex_share*df.loc[(p,w,t-1,k),'avgd_starts']*
                                     ((prices[(prices['prod_type']=='expected_price_Unconventional_{}'.format(k))&(prices['year']==t)]['value'].squeeze() - 
                                     prices[(prices['prod_type']=='expected_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())
@@ -682,9 +679,9 @@ def VacaMuerta(yr0 = 2020,
                                     (1-ex_share)*df.loc[(p,w,t-1,k),'avgd_starts']*
                                     ((prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t)]['value'].squeeze() - 
                                     prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())
-                                    / prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())*pes.loc[p,"p_elast_supply"] ,0))
+                                    / prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())*pes.loc[p,"p_elast_supply"],0.0),0)
 
-                                s=np.maximum(0.0,round(df.loc[(p,w,t-1,k),'starts'] + 
+                                s=round(np.maximum(df.loc[(p,w,t-1,k),'starts']+  
                                     ex_share*df.loc[(p,w,t-1,k),'starts']*
                                     ((prices[(prices['prod_type']=='expected_price_Unconventional_{}'.format(k))&(prices['year']==t)]['value'].squeeze() - 
                                     prices[(prices['prod_type']=='expected_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())
@@ -693,36 +690,16 @@ def VacaMuerta(yr0 = 2020,
                                     (1-ex_share)*df.loc[(p,w,t-1,k),'starts']*
                                     ((prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t)]['value'].squeeze() - 
                                     prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())
-                                    / prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())*pes.loc[p,"p_elast_supply"],0))
+                                    / prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())*pes.loc[p,"p_elast_supply"],0.0),0)
 
                         elif w == "Conventional":
-                                avg_s =  np.maximum(0.0, conv_start_gr[conv_start_gr['prod_type']=='{}'.format(k)]['rate'].squeeze()*df.loc[(p,w,t-1,k),'avgd_starts'])
-                                s =   np.maximum(0.0, conv_start_gr[conv_start_gr['prod_type']=='{}'.format(k)]['rate'].squeeze()*df.loc[(p,w,t-1,k),'starts'])
+                                avg_s = round(np.maximum(0.0, conv_start_gr[conv_start_gr['prod_type']=='{}'.format(k)]['rate'].squeeze()*df.loc[(p,w,t-1,k),'avgd_starts']),0)
+                                s =   round(np.maximum(0.0, conv_start_gr[conv_start_gr['prod_type']=='{}'.format(k)]['rate'].squeeze()*df.loc[(p,w,t-1,k),'starts']),0)
 
                         
                         if df.loc[(p,w,t-1,k),'starts'].squeeze() <= 0.0 or df.loc[(p,w,t-1,k),'avgd_starts'].squeeze() <= 0.0  :
                             avg_s = 0.0
                             s = 0.0
-
-                        # print(str(t) +" " + w +" "+ k)
-                        # print('price value components- before recalc')
-               
-                        # # print(responsiveness)
-                        # print(prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_price_{}_{}'.format(w,k)),'value'].squeeze())
-                        # print(prices.loc[(prices['year']==t-1)&(prices['prod_type']=='expected_price_{}_{}'.format(w,k)),'value'].squeeze())
-                        # print(avg_s)
-                        # print(ex_share)
-
-                        # print(df.loc[(p,w,t-1,k),'avgd_starts'])
-                        # print(prices[(prices['prod_type']=='expected_price_Unconventional_{}'.format(k))&(prices['year']==t)]['value'].squeeze())
-                        # print(prices[(prices['prod_type']=='expected_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())
-                        # print(prices[(prices['prod_type']=='expected_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())
-
-                        # print((1-ex_share))
-                        # print(df.loc[(p,w,t-1,k),'avgd_starts'])
-                        # print(prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t)]['value'].squeeze())
-                        # print(prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())
-                        # print(prices[(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k))&(prices['year']==t-1)]['value'].squeeze())
 
                         prices = prices.set_index(['prod_type','year'])
                         qi1=df.loc[(p,w,t-1,k),'qi']
@@ -882,26 +859,24 @@ def VacaMuerta(yr0 = 2020,
 
                         #make responsive to changes in the surplus exports v imports
                         
-                        ratio = safe_div(exports.loc[(exports['year']==t),'surplus_{}_{}'.format(w,k)].squeeze(),exports.loc[(exports['surplus_{}_{}'.format(w,k)]>1).idxmax,'surplus_{}_{}'.format(w,k)].squeeze())
+                        # ratio = safe_div(exports.loc[(exports['year']==t),'surplus_{}_{}'.format(w,k)].squeeze(),exports.loc[(exports['surplus_{}_{}'.format(w,k)]>1).idxmax,'surplus_{}_{}'.format(w,k)].squeeze())
+                        ratio = safe_div(exports.loc[(exports['year']==t),'surplus_{}'.format(k)].squeeze(),exports.loc[(exports['year']==t),'{}_prod'.format(k)].squeeze())
+
                         cumratio +=ratio
-                        # print('test')
-                        # print(t)
-                        # print(exports.loc[(exports['year']==t),'surplus_{}_{}'.format(w,k)].squeeze())
-                        # print(exports.loc[(exports['surplus_{}_{}'.format(w,k)]>1).idxmax,'surplus_{}_{}'.format(w,k)].squeeze())
-                        # print(ratio)
-                
-                        if exports.loc[(exports['year']==t),'surplus_{}_{}'.format(w,k)].squeeze() > 1.0:
-                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_{}_{}'.format(w,k)),'value'] = (prices.loc[(prices['year']==t)&(prices['prod_type']=='{} ktoe'.format(k)),'value'].squeeze() -
-                                                                                                                                (pow(ratio,well_response[well_response['prod_type']=='{}'.format(k)]['rate'].squeeze()))*responsiveness[responsiveness['prod_type']=='{}'.format(k)]['rate'].squeeze()*prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_price_{}_{}'.format(w,k)),'value'].squeeze())
-                                                                                                                                            
-                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_{}_{}'.format(w,k)),'value'] =(prices.loc[(prices['year']==t)&(prices['prod_type']=='{} ktoe'.format(k)),'value'].squeeze() -
-                                                                                                                                (pow(ratio,well_response[well_response['prod_type']=='{}'.format(k)]['rate'].squeeze()))*responsiveness[responsiveness['prod_type']=='{}'.format(k)]['rate'].squeeze()*prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_{}_{}'.format(w,k)),'value'].squeeze())
+
+                        if exports.loc[(exports['year']==t),'surplus_{}'.format(k)].squeeze() > 1.0:
+                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'] = (prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze() -
+                                                                                                                                (1-1/(1+ratio))*responsiveness[responsiveness['prod_type']=='{}'.format(k)]['rate'].squeeze()*prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'].squeeze())
                         
-                        #print(prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_{}_{}'.format(w,k)),'value'].squeeze())
+                        
+                        # (pow(ratio,well_response[well_response['prod_type']=='{}'.format(k)]['rate'].squeeze()))                                                                                                                    
+                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'] = (prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze() -
+                                                                                                                                (1-1/(1+ratio))*responsiveness[responsiveness['prod_type']=='{}'.format(k)]['rate'].squeeze()*prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze())
+                        
                         #print(prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_{}_{}'.format(w,k)),'value'].squeeze())
                         else:
-                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_{}_{}'.format(w,k)),'value'] = prices.loc[(prices['year']==t)&(prices['prod_type']=='{} ktoe'.format(k)),'value'].squeeze()              
-                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_{}_{}'.format(w,k)),'value'] = prices.loc[(prices['year']==t)&(prices['prod_type']=='{} Local ktoe'.format(k)),'value'].squeeze()
+                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_Conventional_{}'.format(k)),'value'] = prices.loc[(prices['year']==t+1)&(prices['prod_type']=='{} ktoe'.format(k)),'value'].squeeze()              
+                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_Conventional_{}'.format(k)),'value'] = prices.loc[(prices['year']==t+1)&(prices['prod_type']=='{} Local ktoe'.format(k)),'value'].squeeze()
 
             for w in well_type: 
                 for p in production_type: 
@@ -927,7 +902,9 @@ def VacaMuerta(yr0 = 2020,
     # #net fiscal revenue
     finance['total gov transfers'] = fiscal['export duties'] + fiscal['royalties']-fiscal['production subsidy']+fiscal['import subsidy']
     finance['total gov transfers no imports'] = fiscal['export duties'] + fiscal['royalties']-fiscal['production subsidy']
-    finance['total_pct_gdp'] = finance['total gov transfers'] /GDP*100
+    finance['total_pct_gdp'] = (fiscal['discount_factor']*finance['total gov transfers']) /GDP*100
+
+
     finance['disc_revenue'] = fiscal['discount_factor'] *(fiscal['domestic revenue'] + fiscal['export revenue']-finance['total gov transfers no imports'])
     finance['disc_exp']= fiscal['discount_factor'] *(fiscal['us_capex'] + fiscal['ds_capex']+ fiscal['opex'])
     finance['disc_net_rev'] = finance['disc_revenue'] - finance['disc_exp']
@@ -944,23 +921,23 @@ def VacaMuerta(yr0 = 2020,
     unconv_share =(wells_output[1]+wells_output[3])/wells_total
     gas_share = wells_output[1]/(wells_output[1]+wells_output[3])
 
-    # try: 
-    #     finance.to_csv(outdir+'finance_{}_{}.csv'.format(rcp, switch))
-    #     # npv.to_csv(outdir+'npv.csv_{}_{}.csv'.format(rcp, switch))
-    #     fiscal.to_csv(outdir+"fiscal_{}_{}.csv".format(rcp, switch))
-    #     cc.to_csv(outdir+"us_capex_{}_{}.csv".format(rcp, switch))
-    #     cons.to_csv(outdir+"consumption_{}_{}.csv".format(rcp, switch))
-    #     exports.to_csv(outdir+"exports_{}_{}.csv".format(rcp, switch))
-    #     #save outputs
-    #     #note this value is about 10k ktoe below minem for 2020 because it excludes own consumption. Could add to match + keep same going forward
-    #     cons_df.to_csv(outdir+'consumption forecast_{}_{}.csv'.format(rcp, switch))
-    #     df.to_csv(outdir+'test_{}_{}.csv'.format(rcp, switch))
-    #     pp.to_csv(outdir+'production_per_well_year_{}_{}.csv'.format(rcp, switch))
-    #     prices.to_csv(outdir+"prices_{}_{}.csv".format(rcp, switch))
-    #     mp.to_csv(outdir+"production_{}_{}.csv".format(rcp, switch))
+    try: 
+        finance.to_csv(outdir+'finance_{}_{}.csv'.format(rcp, switch))
+        # npv.to_csv(outdir+'npv.csv_{}_{}.csv'.format(rcp, switch))
+        fiscal.to_csv(outdir+"fiscal_{}_{}.csv".format(rcp, switch))
+        cc.to_csv(outdir+"us_capex_{}_{}.csv".format(rcp, switch))
+        cons.to_csv(outdir+"consumption_{}_{}.csv".format(rcp, switch))
+        exports.to_csv(outdir+"exports_{}_{}.csv".format(rcp, switch))
+        #save outputs
+        #note this value is about 10k ktoe below minem for 2020 because it excludes own consumption. Could add to match + keep same going forward
+        cons_df.to_csv(outdir+'consumption forecast_{}_{}.csv'.format(rcp, switch))
+        # df.to_csv(outdir+'test_{}_{}.csv'.format(rcp, switch))
+        pp.to_csv(outdir+'production_per_well_year_{}_{}.csv'.format(rcp, switch))
+        prices.to_csv(outdir+"prices_{}_{}.csv".format(rcp, switch))
+        mp.to_csv(outdir+"production_{}_{}.csv".format(rcp, switch))
 
-    # except: 
-    #     print('open csv could not save results')
+    except: 
+        print('open csv could not save results')
 
     #######################
     #   outputs for RDM   #
@@ -978,11 +955,6 @@ def VacaMuerta(yr0 = 2020,
     subcomponents_npv = finance.reset_index().groupby(['well_type','product'])['disc_net_rev'].agg('sum')
     subcomponents_npv_gdp = finance.reset_index().groupby(['well_type','product'])['disc_net_rev'].agg('sum')/GDP*100
 
-    # print(subcomponents_ft)
-    # print(subcomponents_ft_gdp)
-    # print(subcomponents_npv)
-    # print(subcomponents_npv_gdp)
-
     gdp_npv_conv_gas = subcomponents_npv_gdp[0]
     gdp_npv_conv_oil = subcomponents_npv_gdp[1]
     gdp_npv_unconv_gas = subcomponents_npv_gdp[2]
@@ -995,14 +967,11 @@ def VacaMuerta(yr0 = 2020,
 
     #well outputs
     wells_output = fiscal['starts'].groupby(['product','well_type']).sum()
-    # print(wells_output)
+
     wells_total = fiscal['starts'].sum()
-    # print(wells_total)
 
     unconv_share =(wells_output[1]+wells_output[3])/wells_total
     gas_share = wells_output[1]/(wells_output[1]+wells_output[3])
-    # print(unconv_share)
-    # print(gas_share)
 
     total_ft_gdp = (finance['total gov transfers'].sum())/GDP*100
 
@@ -1067,9 +1036,7 @@ if __name__ == "__main__":
                             IntegerParameter("gas_demand_decline_speed",5 ,30),
                             IntegerParameter("oil_demand_decline_speed",5 ,30),
                             RealParameter("oil_responsiveness",0.0, 1.0),
-                            RealParameter("gas_responsiveness",0.0, 1.0),
-                            RealParameter("oil_well_response",0.01, 2.0), 
-                            RealParameter("gas_well_response",0.01, 2.0), 
+                            RealParameter("gas_responsiveness",0.0, 1.0)
                             #Weighted Average Cost of Capital 
 ] #Weighted Average Cost of Capital       
 
@@ -1097,22 +1064,10 @@ if __name__ == "__main__":
     print("EXPERIMENTS")
     experiments, outcomes = results
     outcomes2 = pd.DataFrame(outcomes)
+    experiments2 = pd.DataFrame(experiments)
+    experiments2.to_csv(outdir+"vm_experiments.csv")
+    outcomes2.to_csv(outdir+"vm_outcomes.csv")
 
-    try: 
-        experiments2 = pd.DataFrame(experiments)
-        experiments2.to_csv(outdir+"vm_experiments_curr.csv")
-        outcomes2.to_csv(outdir+"vm_outcomes_curr.csv")
-
-
-        results = pd.DataFrame(results)
-        print(experiments.shape)
-        print(list(outcomes.keys()))
-        print(outcomes)
-        print(experiments)
-        #print(results.type())
-        results.to_csv(outdir+"vm_results.csv")
-    except: 
-        print("FORGOT TO CLOSE FILE!!!")
 
 #     policies = experiments['policy']
 #     print(policies)

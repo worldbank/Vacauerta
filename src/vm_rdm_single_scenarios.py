@@ -109,9 +109,7 @@ def VacaMuerta(yr0 = 2020,
                 intl_wedge_end_oil = 1, 
                 well_life = 25,
                 oil_responsiveness = .01,
-                gas_responsiveness = .01,
-                oil_well_response = 1.2,
-                gas_well_response = 1.2):
+                gas_responsiveness = .01):
 
     # #supply side
     #format us capex
