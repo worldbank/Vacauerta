@@ -4,44 +4,39 @@ Last modified by Sara Turner on 8.18.2021
 
 '''
 
-#import warnings
-# #print("warnings gone")
-# warnings.simplefilter('ignore', ImportWarning)
-# warnings.filterwarnings('ignore', message='netlogo connector not available')
-print('hello')
+import warnings, os, time
+import logging.handlers
 
-from xml.dom import pulldom
-from ema_workbench import (Model, RealParameter,CategoricalParameter, IntegerParameter, TimeSeriesOutcome, ema_logging, perform_experiments)
-# from ema_workbench.connectors.excel import ExcelModel
-from ema_workbench.em_framework.evaluators import MultiprocessingEvaluator
-from ema_workbench.em_framework.outcomes import ArrayOutcome, ScalarOutcome
-from ema_workbench.util import ema_exceptions
-#from ema_workbench.analysis.plotting import lines
-from ema_workbench.analysis import pairs_plotting
-from ema_workbench.analysis import prim
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import os 
+
 from pandas.core.indexing import convert_missing_indexer, convert_to_index_sliceable
-import os 
-import warnings
 from math import floor
+from xml.dom import pulldom
+from ema_workbench import (Model, RealParameter,CategoricalParameter, IntegerParameter, TimeSeriesOutcome, ema_logging, perform_experiments)
+from ema_workbench.em_framework.evaluators import MultiprocessingEvaluator
+from ema_workbench.em_framework.outcomes import ArrayOutcome, ScalarOutcome
+from ema_workbench.util import ema_exceptions
+from ema_workbench.analysis import pairs_plotting
+from ema_workbench.analysis import prim
 
-#set wd
-# Print the current working directory
-#print("Current working directory: {0}".format(os.getcwd()))
+warnings.simplefilter(action='ignore', category=FutureWarning)
+print('hello')
 
-# Change the current working directory
-os.chdir('C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\src')
-#print("Current working directory: {0}".format(os.getcwd()))
+# os.chdir('C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\src')
+# outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\"
+# indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'#
 
-outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\"
-indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'
-# outdir = 'C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\'
+os.chdir('/home/wb411133/Code/Vacauerta/src')
+indir = "/home/wb411133/temp/ARG_CCDR/inputs/"
 
-num_experiments = 10
+num_experiments = 10000
+n_processes = None #for multi-processing - setting any values is slower than setting to none
+outdir = f"/home/wb411133/temp/ARG_CCDR/outputs_v2/n_{num_experiments}/"
+if not os.path.exists(outdir):
+    os.makedirs(outdir)
 
 def VacaMuerta(yr0 = 2020, 
                 final_yr = 2050, 
@@ -1013,7 +1008,7 @@ def VacaMuerta(yr0 = 2020,
     return npv_gdp, npv_unsub_gdp, total_ft_gdp, wells_total,unconv_share, gas_share, gdp_npv_conv_gas,gdp_npv_conv_oil,gdp_npv_unconv_gas,gdp_npv_unconv_oil, ft_npv_conv_gas, ft_npv_conv_oil, ft_npv_unconv_gas, ft_npv_unconv_oil
 
 if __name__ == "__main__":
-
+    start_time = time.time()
     ema_logging.log_to_stderr(level=ema_logging.INFO)
     model = Model("VacaMuerta",function=VacaMuerta)
 
@@ -1131,3 +1126,6 @@ if __name__ == "__main__":
     heatmap = sns.heatmap(fs, cmap='viridis', annot=True)
     # plt.show()
     plt.savefig(outdir+'feature_scoring.png', bbox_inches="tight")
+    end_time = time.time()
+    print(f'Runtime: {end_time-start_time}')
+    
