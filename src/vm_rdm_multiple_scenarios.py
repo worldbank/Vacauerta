@@ -5,10 +5,12 @@ Last modified by Sara Turner on 8.18.2021
 '''
 
 #import warnings
+# #print("warnings gone")
 # warnings.simplefilter('ignore', ImportWarning)
 # warnings.filterwarnings('ignore', message='netlogo connector not available')
-# print('hello')
+print('hello')
 
+from xml.dom import pulldom
 from ema_workbench import (Model, RealParameter,CategoricalParameter, IntegerParameter, TimeSeriesOutcome, ema_logging, perform_experiments)
 # from ema_workbench.connectors.excel import ExcelModel
 from ema_workbench.em_framework.evaluators import MultiprocessingEvaluator
@@ -39,7 +41,7 @@ outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\
 indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'
 # outdir = 'C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\'
 
-num_experiments = 8
+num_experiments = 100
 
 def VacaMuerta(yr0 = 2020, 
                 final_yr = 2050, 
@@ -65,7 +67,6 @@ def VacaMuerta(yr0 = 2020,
                 m = 9542, 
                 oil_opex = (6.7/.146),  
                 gas_opex = (17.29/.146), 
-                subsidy_bid_price_ratio = 1.05, 
                 share_covered = .17, 
                 royalty_rate_gas = .12, 
                 royalty_rate_oil = .12, 
@@ -81,7 +82,6 @@ def VacaMuerta(yr0 = 2020,
                 share_own_capital =  .6803, 
                 opp_cost_debt =  .0312, 
                 GDP = 643629000000, 
-                well_cap_cost = 1350000, 
                 export_share_oil = .0,
                 export_share_gas =.0,  
                 gas_export_limits = 1.0, 
@@ -108,7 +108,8 @@ def VacaMuerta(yr0 = 2020,
                 intl_wedge_end_oil = 1, 
                 well_life = 25,
                 oil_responsiveness = .01,
-                gas_responsiveness = .01):
+                gas_responsiveness = .01, 
+                public_ds_capex_share = 0.0):
 
     # #supply side
     #format us capex
@@ -140,6 +141,7 @@ def VacaMuerta(yr0 = 2020,
     responsiveness = {'prod_type':['Gas','Oil'],'rate':[gas_responsiveness,  oil_responsiveness]}
     responsiveness = pd.DataFrame(responsiveness)
 
+
     ################################
     ##          Well Starts       ##
     ################################
@@ -149,6 +151,8 @@ def VacaMuerta(yr0 = 2020,
     well_starts['well_type'] = well_starts['well_type'].replace({'CONVENCIONAL':'Conventional', 'NO CONVENCIONAL':'Unconventional'}) 
     well_starts['avgd_starts'] = well_starts.groupby(['well_type','prod_type'])['starts'].transform(lambda x: x.rolling(3,1).mean())
     # well_starts.to_csv(outdir+'well_starts.csv')
+    # prices['Gas'] = prices.rolling(window=2)['Price Gas Bolivia']
+    # print(well_starts.head(20))
     #we use three types of well - conventional, shale, and tight. All threee produce both oil and gas, but in different proportions. have generated an indicator for gas and oil wells based on threshold of 6000cf/bbl or 33.922 thousand m3 gas/ m3 oil.  
     #this makes work conssitent with newell and prest who separated analysis by conventional and unconventional oil and gas. 
     # can use tipo_de_recurso and oil_or_gas to achieve the same breakout
@@ -222,7 +226,7 @@ def VacaMuerta(yr0 = 2020,
     #s_oil = s_gas.cumsum()
 
     prices['Cons Gas Local ktoe'] = (prices['Gas Local ktoe']/s_gas)
-
+    # print(prices['Cons Gas Local ktoe'])
     prices['Cons Oil Local ktoe'] = (prices['Oil Local ktoe']/s_oil)
 
     prices['expected_price_Conventional_Oil'] = prices['Oil ktoe']
@@ -235,6 +239,7 @@ def VacaMuerta(yr0 = 2020,
     prices['expected_local_price_Unconventional_Oil'] = prices['Oil Local ktoe']
     prices['expected_local_price_Unconventional_Gas'] = prices['Gas Local ktoe']
     # prices = prices.set_index('year')
+    # print(len(prices))
 
     # drop last rows
     n = len(prices)-(final_yr-yr0)-2
@@ -254,13 +259,14 @@ def VacaMuerta(yr0 = 2020,
 
     #load demand side elasticities
     ped = pd.read_csv(indir+"demand_elasticities.csv")
+    #print(ped.head())
 
     #load income forecast
     income = pd.read_csv(indir+"income.csv")
     income = income[['year',"POLES_USD2015/cap"]]
     income = income.rename(columns={"POLES_USD2015/cap": "Ln_GDPPC"})
     #ln_GCAM5.3_NGFS_Net Zero_USD2015/cap	ln_POLES_USD2015/cap
-
+    # print(income.head())
 
 
     demand_bal = demand_bal.rename( 
@@ -287,6 +293,7 @@ def VacaMuerta(yr0 = 2020,
             'cons_residential','cons_transport', 'cons_industry','cons_other' ]].T
     demand_bal.columns = demand_bal.iloc[0]
     demand_bal = demand_bal.iloc[1: , :]
+    #print(demand_bal.columns)
 
     collist = ['Energia Hidraulica_Primaria', 'Energia Nuclear_Primaria',
         'Carbon Mineral_Primaria', 'Lena_Primaria', 'Bagazo_Primaria',
@@ -310,7 +317,9 @@ def VacaMuerta(yr0 = 2020,
         'Biodiesel_Secondaria','TOTAL I_Primaria', 'TOTAL II_Secondaria']
     demand_bal = demand_bal.drop(collist, axis = 1)
 
+    # print(demand_bal)
     demand_bal= demand_bal.reset_index().rename(columns={'index': 'step'})
+    #demand_bal.to_csv(outdir+"simplified_balance.csv")
 
     primary_inflows = ['prim_prod','prim_imports','prim_adjust','prim_stockvar']
     secondary_inflows = ['prim_imports', 'prim_adjust','prim_stockvar']
@@ -318,10 +327,24 @@ def VacaMuerta(yr0 = 2020,
     p_s_outflows = ['prim_exports','prim_unapproved','trans_gas_treat','prim_losses','trans_electricity','trans_refinery',
     'trans_other','cons_own', 'cons_residential', 'cons_transport','cons_industry','cons_other']
 
+
+    #####################################
+    #      SAVE percent                ##
+    #####################################
+    # def safe_pct(s1,s2,p1,p2):
+    #     # print(x/y)
+    #     print('terror!')
+    #     if s1 and s2 and p1 and p2:  
+    #         print( "values exist!")
+    #     else:
+    #         print('dont exist!')
+    #     # return min(1.0,max(0,((s2/p2-s1/p1)/(s1/p1)))) if s1 and s2 and p1 and p2 else 1
+
     #####################################
     #      SAVE DIVISION               ##
     #####################################
     def safe_div(x,y):
+        # print(x/y)
         # return min(1,max(0,x/y)) if y else 1
         return max(0,x/y) if y else 1
 
@@ -354,7 +377,7 @@ def VacaMuerta(yr0 = 2020,
         except: 
                 i_flows = (bal[bal['step'].isin(secondary_inflows)][products[0]].squeeze()).sum()
                 o_flows = (bal[bal['step'].isin(outflows)][products[0]].squeeze()).sum()
-
+        # print(i_flows+o_flows)
         flow_share = bal[products]/i_flows
         flow_share['type']=type_cat
         return bal,flow_share 
@@ -362,10 +385,12 @@ def VacaMuerta(yr0 = 2020,
     oil_type = ['step','Petroleo_Primaria','petroleum_other_Secondaria']
     oil_products =['Petroleo_Primaria','petroleum_other_Secondaria']
 
+    # print('oil check:')
     oil_bal, oil_share = balance_processing(oil_type,oil_products,primary_inflows,secondary_inflows, p_s_outflows)
 
     gas_type = ['step', 'Gas Natural de Pozo_Primaria','Gas Distribuido por Redes_Secondaria']
     gas_products =['Gas Natural de Pozo_Primaria','Gas Distribuido por Redes_Secondaria']
+    # print('gas check:')
     gas_bal, gas_share = balance_processing(gas_type,gas_products,primary_inflows,secondary_inflows, p_s_outflows)
 
     e_type = ['step', 'Energia Electrica_Secondaria']
@@ -374,6 +399,7 @@ def VacaMuerta(yr0 = 2020,
     e_secondary_inflows = ['prim_imports','prim_adjust','prim_stockvar','trans_electricity']
     p_s_outflows = ['prim_exports','prim_unapproved','prim_losses', 'trans_gas_treat','trans_refinery',
     'trans_other','cons_own', 'cons_residential', 'cons_transport','cons_industry','cons_other']
+    # print('electricity check:')
     e_bal, e_share = balance_processing(e_type,e_products,e_primary_inflows,e_secondary_inflows, p_s_outflows)
 
     #########################################
@@ -419,6 +445,9 @@ def VacaMuerta(yr0 = 2020,
 
         # #opex - on production
         opex =(mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze())*opex_cost[opex_cost['product']==p]['opex'].squeeze()
+        # print(production)
+        # print((mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze()))
+        # print(opex_cost[opex_cost['product']==p]['opex'].squeeze())
 
         #domestic_revenue
         dom_rev = ((mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze())-exports[exports['year']==t]['exports_{}_{}'.format(w,k)].squeeze()-exports[exports['year']==t]['surplus_{}_{}'.format(w,k)].squeeze())*prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()
@@ -435,7 +464,7 @@ def VacaMuerta(yr0 = 2020,
 
         # # #import subsidies
         if (prices[(prices['prod_type']=='{} ktoe'.format(k))&(prices['year']==t)]['value'].squeeze() > prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()):
-            import_sub = (exports[exports['year']==t]['imports_{}_{}'.format(w,k)].squeeze()*(prices[(prices['prod_type']=='{} ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()-prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()))
+            import_sub = -1*(exports[exports['year']==t]['imports_{}_{}'.format(w,k)].squeeze()*(prices[(prices['prod_type']=='{} ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()-prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()))
         else: 
             import_sub =0
         
@@ -511,11 +540,13 @@ def VacaMuerta(yr0 = 2020,
     electricity_cons0 = el_rescons0+el_indcons0+el_transcons0+el_owncons0 + el_othercons0
     total_cons0 = gas_cons0+oil_cons0+electricity_cons0
 
+    # print(df.head())
     cons_df.loc[0] = [2020, gas_rescons0,gas_indcons0,gas_transcons0,gas_othercons0,gas_owncons0,gas_loss_adj0,oil_rescons0,oil_indcons0,oil_transcons0,oil_othercons0,oil_owncons0,oil_loss_adj0,
         el_rescons0,el_indcons0,el_transcons0,el_othercons0,el_owncons0,el_loss_adj0,gas_cons0,oil_cons0,electricity_cons0,total_cons0]
 
     #a is exogenous increase in energy efficiency
     prices = prices.reset_index()
+    # print(prices.head())
 
     gas_own_cons_share =  gas_owncons0/(gas_rescons0+gas_transcons0+gas_indcons0+gas_othercons0)
     oil_own_cons_share = oil_owncons0/(oil_rescons0+oil_transcons0+oil_indcons0+oil_othercons0)
@@ -562,7 +593,7 @@ def VacaMuerta(yr0 = 2020,
             ##PRODUCTION
             #starts
             prices = prices.set_index(['prod_type','year'])
-
+            # print(prices.head())
             well_starts
             wells0=well_starts[(well_starts["year"]==t)].reset_index().set_index('well_type')
 
@@ -572,6 +603,8 @@ def VacaMuerta(yr0 = 2020,
             df['starts'] = df['avgd_starts'].astype(float, errors = 'raise')
             df['product'] = df['product'].astype(str, errors = 'raise')
             df= df.reset_index().set_index(['prod_type','well_type','year','product'])
+            # print(df.head())
+            print('t0 done')
 
             initial_prod_2020_m3 = [2020,26230 ,18910,21321 , 6965]
 
@@ -624,13 +657,15 @@ def VacaMuerta(yr0 = 2020,
             for w in well_type:
                 for p in production_type:
                     for k in product: 
-
+                            #current loop  
+                        # print(str(t) +" "+ p + " " + w +" "+ k)
                         prices=prices.reset_index()
 
                         ex_share = export_share[export_share['prod_type']=='{}'.format(p)]['rate'].squeeze()
 
-                        #estimate current year well starts
-                        # s=round(df.loc[(p,w,t-1,k),'starts'] + df.loc[(p,w,t-1,k),'starts']*((prices.loc[(p,t),"value"] - prices.loc[(p,t-1),"value"])/prices.loc[(p,t-1),"value"])*pes.loc[p,"p_elast_supply"],0)
+                        #note this should be responsive to both exports and domestic prices - need to come and reactivate that
+                            #estimate current year well starts
+                            # s=round(df.loc[(p,w,t-1,k),'starts'] + df.loc[(p,w,t-1,k),'starts']*((prices.loc[(p,t),"value"] - prices.loc[(p,t-1),"value"])/prices.loc[(p,t-1),"value"])*pes.loc[p,"p_elast_supply"],0)
 
                         if w == "Unconventional":
                                 avg_s=round(np.maximum(df.loc[(p,w,t-1,k),'avgd_starts']+ 
@@ -684,7 +719,13 @@ def VacaMuerta(yr0 = 2020,
                         for sy in range(t,t+well_life):
                             pr=hyperbolic(sy-t,qi,b,di)*a_starts
                             h=[p,w,k,t,sy,a_starts,pr]
-                            prod_df.loc[sy-t]= h 
+                            prod_df.loc[sy-t]= h
+
+                        # print(str(t)+p+w+k+str(sy))
+                        # print(cumratio)
+                        # print(prod_df.loc[(prod_df["year"]==t)&(prod_df["prod_type"]==p)&(prod_df["well_type"]==w)&(prod_df["product"]==k),"production"])
+                        # prod_df.loc[(prod_df["year"]==t)&(prod_df["prod_type"]==p)&(prod_df["well_type"]=="Unconventional")&(prod_df["product"]==k),"production"] = (prod_df.loc[(prod_df["year"]==t)&(prod_df["prod_type"]==p)&(prod_df["well_type"]==w)&(prod_df["product"]==k),'production'].transform(lambda x: x*(1-cumratio)))
+                        # print(prod_df.loc[(prod_df["year"]==t)&(prod_df["prod_type"]==p)&(prod_df["well_type"]==w)&(prod_df["product"]==k),"production"]) 
 
                         pp = pp.append(prod_df)
                     
@@ -714,6 +755,7 @@ def VacaMuerta(yr0 = 2020,
             mp.index = mp.index + 1  # shifting index
             mp.sort_index(inplace=True) 
             mp = mp[yr0-yr0:final_yr-yr0+1]
+            # print(mp)
 
  
             conventional_gas_decline = np.linspace(conv_prod_decline_start, conv_prod_decline_end_oil,len(mp)).cumsum()
@@ -751,7 +793,11 @@ def VacaMuerta(yr0 = 2020,
             mp['Unconventional_Oil']= mp['Unconventional_Oil'] - mp['Unconventional_Oil'].transform(lambda x: max(x,0.00001))*unconventional_oil_decline
             
             mp.loc[mp['Unconventional_Oil'] <= 0, 'Unconventional_Oil'] =0
-
+            #except: 
+                #mp['Unonventional_Oil']=0
+            # print(mp['Unconventional_Oil'])
+            # except: 
+            # mp['Unonventional_Oil']=0
 
             mp['Gas_prod'] = mp['Conventional_Gas'] + mp['Unconventional_Gas']
             mp['Oil_prod'] = mp['Conventional_Oil'] + mp['Unconventional_Oil']
@@ -796,6 +842,8 @@ def VacaMuerta(yr0 = 2020,
             exports['imports_Conventional_Gas'] = exports['net_imports_Gas']-exports['imports_Unconventional_Gas']
             exports['imports_Conventional_Oil'] = exports['net_imports_Oil']-exports['imports_Unconventional_Oil']
 
+
+            # print(mp.head())
             prices = prices.reset_index()
 
             #used to append data and prep next year values
@@ -808,6 +856,7 @@ def VacaMuerta(yr0 = 2020,
                         fiscal = fiscal.append(fiscal_df)
 
                         #make responsive to changes in the surplus exports v imports
+                        
                         # ratio = safe_div(exports.loc[(exports['year']==t),'surplus_{}_{}'.format(w,k)].squeeze(),exports.loc[(exports['surplus_{}_{}'.format(w,k)]>1).idxmax,'surplus_{}_{}'.format(w,k)].squeeze())
                         ratio = safe_div(exports.loc[(exports['year']==t),'surplus_{}'.format(k)].squeeze(),exports.loc[(exports['year']==t),'{}_prod'.format(k)].squeeze())
 
@@ -816,6 +865,7 @@ def VacaMuerta(yr0 = 2020,
                         if exports.loc[(exports['year']==t),'surplus_{}'.format(k)].squeeze() > 1.0:
                             prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'] = (prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze() -
                                                                                                                                 (1-1/(1+ratio))*responsiveness[responsiveness['prod_type']=='{}'.format(k)]['rate'].squeeze()*prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'].squeeze())
+                        
                         
                         # (pow(ratio,well_response[well_response['prod_type']=='{}'.format(k)]['rate'].squeeze()))                                                                                                                    
                             prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'] = (prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze() -
@@ -829,7 +879,10 @@ def VacaMuerta(yr0 = 2020,
             for w in well_type: 
                 for p in production_type: 
                         #calculate new export shares
-                        export_share.loc[(export_share['prod_type']=='{}'.format(p)),'rate'] = safe_div(exports[(exports['year']==t)]['net_exports_{}'.format(p)].squeeze(),exports[(exports['year']==t)]['{}_prod'.format(p)].squeeze())                   
+                        export_share.loc[(export_share['prod_type']=='{}'.format(p)),'rate'] = safe_div(exports[(exports['year']==t)]['net_exports_{}'.format(p)].squeeze(),exports[(exports['year']==t)]['{}_prod'.format(p)].squeeze())
+                        # print('export share')
+                        # print(exports[(exports['year']==t)]['net_exports_{}'.format(p)].squeeze())
+                        # print(exports[(exports['year']==t)]['{}_prod'.format(p)].squeeze())                        
                       
     # prices.to_csv(outdir+'prices.csv')    
     #merge US capex with downstresam Fiscal befor calculating 
@@ -841,58 +894,38 @@ def VacaMuerta(yr0 = 2020,
     fiscal['discount_factor'] = 1/(1*(1 + wacc)**(fiscal['year']-yr0-1))
     fiscal = fiscal.set_index(['year','well_type','product'])
 
-    finance = pd.DataFrame(index = fiscal.index)
-
-    # #net fiscal revenue
-    finance['total gov transfers'] = fiscal['export duties'] + fiscal['royalties']-fiscal['production subsidy']+fiscal['import subsidy']
-    finance['total gov transfers no imports'] = fiscal['export duties'] + fiscal['royalties']-fiscal['production subsidy']
-    finance['total_pct_gdp'] = (fiscal['discount_factor']*finance['total gov transfers']) /GDP*100
-
-
-    finance['disc_revenue'] = fiscal['discount_factor'] *(fiscal['domestic revenue'] + fiscal['export revenue']-finance['total gov transfers no imports'])
-    finance['disc_exp']= fiscal['discount_factor'] *(fiscal['us_capex'] + fiscal['ds_capex']+ fiscal['opex'])
-    finance['disc_net_rev'] = finance['disc_revenue'] - finance['disc_exp']
-
-    #unsubsidized npv
-    finance['disc_private_unsub_revenue'] = fiscal['discount_factor']*(fiscal['domestic revenue'] + fiscal['export revenue'])
-    finance['disc_exp']= fiscal['discount_factor'] *(fiscal['us_capex'] + fiscal['ds_capex']+ fiscal['opex'])
-    finance['disc_net_unsub_rev'] = finance['disc_private_unsub_revenue'] - finance['disc_exp']
-
-    #total wells
-    wells_output = df['avgd_starts'].groupby(['prod_type','well_type']).sum()
-    wells_total = df['avgd_starts'].sum()
-
-    unconv_share =(wells_output[1]+wells_output[3])/wells_total
-    gas_share = wells_output[1]/(wells_output[1]+wells_output[3])
-
-    # try: 
-    #     finance.to_csv(outdir+'finance_{}_{}.csv'.format(rcp, switch))
-    #     # npv.to_csv(outdir+'npv.csv_{}_{}.csv'.format(rcp, switch))
-    #     fiscal.to_csv(outdir+"fiscal_{}_{}.csv".format(rcp, switch))
-    #     cc.to_csv(outdir+"us_capex_{}_{}.csv".format(rcp, switch))
-    #     cons.to_csv(outdir+"consumption_{}_{}.csv".format(rcp, switch))
-    #     exports.to_csv(outdir+"exports_{}_{}.csv".format(rcp, switch))
-    #     #save outputs
-    #     #note this value is about 10k ktoe below minem for 2020 because it excludes own consumption. Could add to match + keep same going forward
-    #     cons_df.to_csv(outdir+'consumption forecast_{}_{}.csv'.format(rcp, switch))
-    #     # df.to_csv(outdir+'test_{}_{}.csv'.format(rcp, switch))
-    #     pp.to_csv(outdir+'production_per_well_year_{}_{}.csv'.format(rcp, switch))
-    #     prices.to_csv(outdir+"prices_{}_{}.csv".format(rcp, switch))
-    #     mp.to_csv(outdir+"production_{}_{}.csv".format(rcp, switch))
-
-    # except: 
-    #     print('open csv could not save results')
 
     #######################
     #   outputs for RDM   #
     #######################
+    finance = pd.DataFrame(index = fiscal.index)
 
+    #split public and private share of downstream capex
+
+    finance['public_ds_capex'] = public_ds_capex_share*fiscal['ds_capex']
+    finance['private_ds_capex'] =(1-public_ds_capex_share)*fiscal['ds_capex']
+
+    # FT as % GDP
+    finance['subsidies'] = fiscal['production subsidy']+fiscal['import subsidy']
+    finance['govt_income'] = fiscal['export duties'] + fiscal['royalties']
+    finance['total gov transfers'] = finance['govt_income'] - finance['subsidies'] + finance['public_ds_capex']
+    # finance['total gov transfers no imports'] = fiscal['export duties'] + fiscal['royalties']-fiscal['production subsidy']
+    total_ft_gdp = ((fiscal['discount_factor']*finance['total gov transfers']).sum())/GDP*100
+
+    #Subsidized NPV as % 
+    finance['disc_revenue'] = fiscal['discount_factor'] *(fiscal['domestic revenue'] + fiscal['export revenue']+finance['subsidies']-finance['govt_income'])
+    finance['disc_exp']= fiscal['discount_factor'] *(fiscal['us_capex'] + finance['private_ds_capex']+ fiscal['opex'])
+    finance['disc_net_rev'] = finance['disc_revenue'] - finance['disc_exp']
     npv_gdp = (finance['disc_net_rev'].sum())/GDP*100
-    npv_unsub_gdp = (finance['disc_net_unsub_rev'].sum())/GDP*100
 
-    subcomponents_ft = finance.reset_index().groupby(['well_type','product'])['total gov transfers'].agg('sum')
+    #Unsubsidized npv NPV as % GDP
+    finance['disc_private_unsub_revenue'] = fiscal['discount_factor']*(fiscal['domestic revenue'] + fiscal['export revenue'])
+    finance['disc_exp']= fiscal['discount_factor'] *(fiscal['us_capex'] + fiscal['ds_capex']+ fiscal['opex'])
+    finance['disc_net_unsub_rev'] = finance['disc_private_unsub_revenue'] - finance['disc_exp']
+    npv_unsub_gdp = (finance['disc_net_unsub_rev'].sum())/GDP*100
+    
+    #NPV and FT a by production type
     subcomponents_ft_gdp = finance.reset_index().groupby(['well_type','product'])['total gov transfers'].agg('sum')/GDP*100
-    subcomponents_npv = finance.reset_index().groupby(['well_type','product'])['disc_net_rev'].agg('sum')
     subcomponents_npv_gdp = finance.reset_index().groupby(['well_type','product'])['disc_net_rev'].agg('sum')/GDP*100
 
     gdp_npv_conv_gas = subcomponents_npv_gdp[0]
@@ -905,15 +938,27 @@ def VacaMuerta(yr0 = 2020,
     ft_npv_unconv_gas = subcomponents_ft_gdp[2]
     ft_npv_unconv_oil = subcomponents_ft_gdp[3]
 
-    #well outputs
-    wells_output = fiscal['starts'].groupby(['product','well_type']).sum()
-
-    wells_total = fiscal['starts'].sum()
+    #total wells
+    wells_output = df['avgd_starts'].groupby(['prod_type','well_type']).sum()
+    wells_total = df['avgd_starts'].sum()
 
     unconv_share =(wells_output[1]+wells_output[3])/wells_total
     gas_share = wells_output[1]/(wells_output[1]+wells_output[3])
 
-    total_ft_gdp = (finance['total gov transfers'].sum())/GDP*100
+    # try: 
+    #     finance.to_csv(outdir+'finance_{}_{}.csv'.format(rcp, switch))
+    #     fiscal.to_csv(outdir+"fiscal_{}_{}.csv".format(rcp, switch))
+    #     cc.to_csv(outdir+"us_capex_{}_{}.csv".format(rcp, switch))
+    #     cons.to_csv(outdir+"consumption_{}_{}.csv".format(rcp, switch))
+    #     exports.to_csv(outdir+"exports_{}_{}.csv".format(rcp, switch))
+    #     #note this value is about 10k ktoe below minem for 2020 because it excludes own consumption. Could add to match + keep same going forward
+    #     cons_df.to_csv(outdir+'consumption forecast_{}_{}.csv'.format(rcp, switch))
+    #     pp.to_csv(outdir+'production_per_well_year_{}_{}.csv'.format(rcp, switch))
+    #     prices.to_csv(outdir+"prices_{}_{}.csv".format(rcp, switch))
+    #     mp.to_csv(outdir+"production_{}_{}.csv".format(rcp, switch))
+
+    # except: 
+    #     print('open csv could not save results')
 
     return npv_gdp, npv_unsub_gdp, total_ft_gdp, wells_total,unconv_share, gas_share, gdp_npv_conv_gas,gdp_npv_conv_oil,gdp_npv_unconv_gas,gdp_npv_unconv_oil, ft_npv_conv_gas, ft_npv_conv_oil, ft_npv_unconv_gas, ft_npv_unconv_oil
 
@@ -922,63 +967,63 @@ if __name__ == "__main__":
     ema_logging.log_to_stderr(level=ema_logging.INFO)
     model = Model("VacaMuerta",function=VacaMuerta)
 
-    model.uncertainties = [CategoricalParameter('rcp',['CURR','1.5']),
+    model.uncertainties = [CategoricalParameter('rcp',['CURR','1.5']), #emissions pathway
                             # CategoricalParameter('switch',['responsive','nonresponsive']),
-                            RealParameter('T_bond_rate',0.0,.12),
-                            RealParameter('arg_sov_risk',0.0,.12),
-                            RealParameter('opp_cost_own_finance',0.02,.2),
-                            RealParameter('share_own_capital',.0,1.),
-                            RealParameter('opp_cost_debt',.0,.15),
-                            RealParameter("pes_oil",.6, 1.4), #Weighted Average Cost of Capital  
-                            RealParameter("pes_gas",0.59, 1.2), #Weighted Average Cost of Capital                  
-                            IntegerParameter("l",2, 20), #Weighted Average Cost of Capital   
-                            RealParameter("t_rate_gas",-.1, 0.1), #Weighted Average Cost of Capital  
-                            RealParameter("t_rate_oil",-.1, 0.1), #Weighted Average Cost of Capital
-                            RealParameter("t_rate_e",-.1, .1), #Weighted Average Cost of Capital
-                            RealParameter("us_capex_gas",200000, 4000000), #Weighted Average Cost of Capital  
-                            RealParameter("us_capex_oil",200000, 4000000), #Weighted Average Cost of Capital
-                            RealParameter("m",2000, 100000), #downstream capex
-                            RealParameter("oil_opex",10, 200), #Weighted Average Cost of Capital
-                            RealParameter("gas_opex",10, 200),
-                            RealParameter("share_covered",0.0, .70), #Weighted Average Cost of Capital
-                            RealParameter("royalty_rate_gas",.0, .30), #Weighted Average Cost of Capital
-                            RealParameter("duty_rate_gas",.0, .30),
-                            RealParameter("royalty_rate_oil",.0, .30), #Weighted Average Cost of Capital
-                            RealParameter("duty_rate_oil",.0, .30),
-                            RealParameter("price_threshold_gas",15000, 2000000), #Weighted Average Cost of Capital
-                            RealParameter("price_threshold_oil",15000, 2000000),
-                            RealParameter("price_floor_gas",2000, 100000), #Weighted Average Cost of Capital
-                            RealParameter("price_floor_oil",2000, 100000),
-                            RealParameter("conv_start_gr_gas", 0,.8),
-                            RealParameter("conv_start_gr_oil", 0,.8),
-                            RealParameter("conv_prod_decline_end_gas", 0,.2),
-                            RealParameter("conv_prod_decline_end_oil", 0,.2),
-                            RealParameter("unconv_prod_decline_end_gas", 0,.2),
-                            RealParameter("unconv_prod_decline_end_oil", 0,.2),
-                            RealParameter("gas_export_limits",.0, 1.0), #Weighted Average Cost of Capital
-                            RealParameter("oil_export_limits",.0, 1.0), #Weighted Average Cost of Capital
-                            RealParameter('cons_wedge_end_gas',.1,10.0),
-                            RealParameter("cons_wedge_end_oil",.1,10.0),
-                            RealParameter('intl_wedge_end_gas',.1,10.0),
-                            RealParameter("intl_wedge_end_oil",.1,10.0),
-                            RealParameter("a_gas_trans",0.0, .1), #Weighted Average Cost of Capital 
-                            RealParameter("a_gas_res",0.0, .1), #Weighted Average Cost of Capital
-                            RealParameter("a_gas_ind",0.0, .1), #Weighted Average Cost of Capital 
-                            RealParameter("a_oil_trans",0.0, .1), #Weighted Average Cost of Capital 
-                            RealParameter("a_oil_res",0.0, .1), #Weighted Average Cost of Capital 
-                            RealParameter("a_oil_ind",0.0, .1), #Weighted Average Cost of Capital 
-                            RealParameter("a_el_trans",0.0, .1), #Weighted Average Cost of Capital 
-                            RealParameter("a_el_res",0.0, .1), #Weighted Average Cost of Capital 
-                            RealParameter("a_el_ind",0.0, .1), #Weighted Average Cost of Capital 
-                            IntegerParameter("well_life",10 ,35),
-                            RealParameter("gas_export_demand",0.0 ,1.0),
-                            RealParameter("oil_export_demand",0.0 ,1.0),
-                            IntegerParameter("gas_demand_decline_speed",5 ,30),
-                            IntegerParameter("oil_demand_decline_speed",5 ,30),
-                            RealParameter("oil_responsiveness",0.0, 1.0),
-                            RealParameter("gas_responsiveness",0.0, 1.0)
-                            #Weighted Average Cost of Capital 
-] #Weighted Average Cost of Capital       
+                            RealParameter('T_bond_rate',0.0,.12), #US treasury bond rate
+                            RealParameter('arg_sov_risk',0.0,.12), #argentina sovereign risk
+                            RealParameter('opp_cost_own_finance',0.02,.2),#opportunity cost of own finance
+                            RealParameter('share_own_capital',.0,1.), #share of own capital invested
+                            RealParameter('opp_cost_debt',.0,.15), #opportunity cost of own debt
+                            RealParameter("pes_oil",.6, 1.4), #price elasticity of supply - oil 
+                            RealParameter("pes_gas",0.59, 1.2), #price elasticity of supply - gas                 
+                            IntegerParameter("l",2, 20), #lag in price elasticity response
+                            RealParameter("t_rate_gas",-.1, 0.1), #transition rate towards gas 
+                            RealParameter("t_rate_oil",-.1, 0.1), #transition rate towards oil
+                            RealParameter("t_rate_e",-.1, .1), #transition rate towards electricity
+                            RealParameter("us_capex_gas",200000, 4000000), #Cost of upstream capex expenditure 
+                            RealParameter("us_capex_oil",200000, 4000000), #Cost of upstream capex expenditure 
+                            RealParameter("m",2000, 100000), #cost of downstream gas capital expenditure
+                            RealParameter("oil_opex",10, 200), #operations costs for gas invetments 
+                            RealParameter("gas_opex",10, 200), #operations costs for gas invetments 
+                            RealParameter("share_covered",0.0, .70), #Wshare of production supported by production subsidies
+                            RealParameter("royalty_rate_gas",.0, .30), #royalty rate for domestic production
+                            RealParameter("duty_rate_gas",.0, .30), #maximum export duty rate paid
+                            RealParameter("royalty_rate_oil",.0, .30), #royalty rate for domestic production
+                            RealParameter("duty_rate_oil",.0, .30), #maximum export duty rate paid
+                            RealParameter("price_threshold_gas",15000, 2000000), #price threshold for payment of export duties
+                            RealParameter("price_threshold_oil",15000, 2000000),  #price threshold for payment of export duties
+                            RealParameter("price_floor_gas",2000, 100000), #price floor for payment of export duties
+                            RealParameter("price_floor_oil",2000, 100000), #price floor for payment of export duties
+                            RealParameter("conv_start_gr_gas", 0,.8),#growth rate in onventional oil and gas starts
+                            RealParameter("conv_start_gr_oil", 0,.8),#growth rate in onventional oil and gas starts
+                            RealParameter("conv_prod_decline_end_gas", 0,.2),#exogenous production decline 
+                            RealParameter("conv_prod_decline_end_oil", 0,.2),#exogenous production decline 
+                            RealParameter("unconv_prod_decline_end_gas", 0,.2), #exogenous production decline in response to decarbonization
+                            RealParameter("unconv_prod_decline_end_oil", 0,.2), #exogenous production decline in response to decarbonization
+                            RealParameter('cons_wedge_end_gas',.1,10.0), #Wedge between domestic producer prices and domestic producer prices
+                            RealParameter("cons_wedge_end_oil",.1,10.0), #Wedge between domestic producer prices and domestic producer prices
+                            RealParameter('intl_wedge_end_gas',.1,10.0), #Wedge between international producer prices and domestic producer prices
+                            RealParameter("intl_wedge_end_oil",.1,10.0), #Wedge between international producer prices and domestic producer prices
+                            RealParameter("a_gas_trans",0.0, .1),  #energy efficiency improvement rate transport gas 
+                            RealParameter("a_gas_res",0.0, .1),  #energy efficiency improvement rate residential gas 
+                            RealParameter("a_gas_ind",0.0, .1),  #energy efficiency improvement rate industrial gas  
+                            RealParameter("a_oil_trans",0.0, .1),  #energy efficiency improvement rate transport oil 
+                            RealParameter("a_oil_res",0.0, .1),  #energy efficiency improvement rate residential oil  
+                            RealParameter("a_oil_ind",0.0, .1),  #energy efficiency improvement rate industrial oil  
+                            RealParameter("a_el_trans",0.0, .1),  #energy efficiency improvement rate residential electricity 
+                            RealParameter("a_el_res",0.0, .1), #energy efficiency improvement rate residential electricity 
+                            RealParameter("a_el_ind",0.0, .1), #energy efficiency improvement rate industrial electricity
+                            IntegerParameter("well_life",10 ,35), #expected lifetime of an active well
+                            RealParameter("gas_export_limits",.0, 1.0), #Initial limits on volume of gas exports
+                            RealParameter("oil_export_limits",.0, 1.0), #Initial limits on volume of oil exports
+                            RealParameter("gas_export_demand",0.0 ,1.0), #final level of export demand internationally
+                            RealParameter("oil_export_demand",0.0 ,1.0), #final level of export demand internationally
+                            IntegerParameter("gas_demand_decline_speed",5 ,30),#years over which international demand for oil declines
+                            IntegerParameter("oil_demand_decline_speed",5 ,30),#years over which international demand for oil declines
+                            RealParameter("oil_responsiveness",0.0, 1.0), #sensitivity of prices to to stock var
+                            RealParameter("gas_responsiveness",0.0, 1.0), #sensitivity of prices to to stock var
+                            RealParameter("public_ds_capex_share",0.0, 1.0) #share of downstream capital provided by public
+]      
 
     model.outcomes = [ScalarOutcome("npv_gdp"),
                        ScalarOutcome("npv_unsub_gdp"),
