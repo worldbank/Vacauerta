@@ -67,6 +67,7 @@ def VacaMuerta(yr0 = 2020,
                 m = 9542, 
                 oil_opex = (6.7/.146),  
                 gas_opex = (17.29/.146), 
+                prod_subsidy_p_ratio = 1.3, 
                 share_covered = .17, 
                 royalty_rate_gas = .12, 
                 royalty_rate_oil = .12, 
@@ -83,13 +84,21 @@ def VacaMuerta(yr0 = 2020,
                 opp_cost_debt =  .0312, 
                 GDP = 643629000000, 
                 export_share_oil = .0,
-                export_share_gas =.0,  
-                gas_export_limits = 1.0, 
-                oil_export_limits = 1.0, 
-                gas_export_demand = 0.0,
-                oil_export_demand = 0.0,
+                export_share_gas =.0, 
+                #speed of decline for demand 
+                gas_export_dem_start = 1.0, 
+                oil_export_dem_start = 1.0, 
+                gas_export_dem_end = 0.0,
+                oil_export_dem_end = 0.0,
                 gas_demand_decline_speed = 20,
                 oil_demand_decline_speed = 20, 
+                #speed of export capacity increase
+                gas_ex_cap_start = 1905, 
+                gas_ex_cap_end= 4631, 
+                gas_ex_cap_increase = 30,
+                oil_ex_cap_start= 33215, 
+                oil_ex_cap_end= 33215, 
+                oil_ex_cap_increase = 30,
                 conv_start_gr_gas  = 0.0,
                 conv_start_gr_oil  = 0.0, 
                 conv_prod_decline_start =.06,
@@ -109,7 +118,7 @@ def VacaMuerta(yr0 = 2020,
                 well_life = 25,
                 oil_responsiveness = .01,
                 gas_responsiveness = .01, 
-                public_ds_capex_share = 0.0):
+                public_ds_capex_share = 0.67):
 
     # #supply side
     #format us capex
@@ -196,10 +205,10 @@ def VacaMuerta(yr0 = 2020,
 
     #ngfs units aree in 2010$/GJ. Conversion 4184 ktoe per GJ
     # #POLES is in 2015$/boe. Conversion 7142 ktoe per boe
-    # prices['Oil ktoe'] = prices['POLES_'+rcp+'_Oil_boe'] *7142
-    # prices['Gas ktoe'] = prices['POLES_'+rcp+'_Gas_boe'] *7142
-    prices['Gas ktoe'] = prices['GCAM_'+rcp+'_S_Gas'] *41868
-    prices['Oil ktoe'] = prices['GCAM_'+rcp+'_S_Oil'] *41868
+    prices['Oil ktoe'] = prices['POLES_'+rcp+'_Oil_boe'] *7142
+    prices['Gas ktoe'] = prices['POLES_'+rcp+'_Gas_boe'] *7142
+    # prices['Gas ktoe'] = prices['GCAM_'+rcp+'_S_Gas'] *41868
+    # prices['Oil ktoe'] = prices['GCAM_'+rcp+'_S_Oil'] *41868
     prices['Cons El Local ktoe'] = prices['GCAM_'+rcp+'_S_Electricity'] *41868
 
     #create price wedge for international vs domestic prices
@@ -246,10 +255,26 @@ def VacaMuerta(yr0 = 2020,
     prices = prices.iloc[:-n]
 
     #####################################
+    ##   Export Capacity Constraints   ##
+    ##################################### 
+    gas_export_capacity = pd.concat([pd.Series(np.linspace(gas_ex_cap_start, gas_ex_cap_end, gas_ex_cap_increase)), 
+                                    pd.Series(np.linspace(gas_ex_cap_end, gas_ex_cap_end,((final_yr-yr0+1)-gas_ex_cap_increase)))], ignore_index = True)
+    oil_export_capacity = pd.concat([pd.Series(np.linspace(oil_ex_cap_start, oil_ex_cap_end, oil_ex_cap_increase)), 
+                                     pd.Series(np.linspace(oil_ex_cap_end, oil_ex_cap_end,((final_yr-yr0+1)-oil_ex_cap_increase)))], ignore_index = True)
+    
+    
+    
+    #####################################
+    ##   Export Capacity Limits        ##
+    #####################################
+    gas_export_cap = pd.concat([pd.Series(np.linspace(gas_ex_cap_start, gas_ex_cap_end,gas_ex_cap_increase)), pd.Series(np.linspace(gas_ex_cap_end, gas_ex_cap_end,((final_yr-yr0+1)-gas_ex_cap_increase)))], ignore_index = True)
+    oil_export_cap = pd.concat([pd.Series(np.linspace(oil_ex_cap_start, oil_ex_cap_end,oil_ex_cap_increase)), pd.Series(np.linspace(oil_ex_cap_end, oil_ex_cap_end,((final_yr-yr0+1)-oil_ex_cap_increase)))], ignore_index = True)    
+    
+    #####################################
     ##   Export Demand Delines         ##
     #####################################
-    gas_export_decline = pd.concat([pd.Series(np.linspace(gas_export_limits, gas_export_demand,gas_demand_decline_speed)), pd.Series(np.linspace(gas_export_demand, gas_export_demand,((final_yr-yr0+1)-gas_demand_decline_speed)))], ignore_index = True)
-    oil_export_decline = pd.concat([pd.Series(np.linspace(oil_export_limits, oil_export_demand,oil_demand_decline_speed)), pd.Series(np.linspace(oil_export_demand, oil_export_demand,((final_yr-yr0+1)-oil_demand_decline_speed)))], ignore_index = True)    
+    gas_export_decline = pd.concat([pd.Series(np.linspace(gas_export_dem_start, gas_export_dem_end,gas_demand_decline_speed)), pd.Series(np.linspace(gas_export_dem_end, gas_export_dem_end,((final_yr-yr0+1)-gas_demand_decline_speed)))], ignore_index = True)
+    oil_export_decline = pd.concat([pd.Series(np.linspace(oil_export_dem_start, oil_export_dem_end,oil_demand_decline_speed)), pd.Series(np.linspace(gas_export_dem_end, gas_export_dem_end,((final_yr-yr0+1)-oil_demand_decline_speed)))], ignore_index = True)    
     
     #####################################
     ##     Load Demand Data            ##
@@ -267,7 +292,6 @@ def VacaMuerta(yr0 = 2020,
     income = income.rename(columns={"POLES_USD2015/cap": "Ln_GDPPC"})
     #ln_GCAM5.3_NGFS_Net Zero_USD2015/cap	ln_POLES_USD2015/cap
     # print(income.head())
-
 
     demand_bal = demand_bal.rename( 
         columns = {'OFERTA_PRODUCCION': "prim_prod",'OFERTA_IMPORTACION': "prim_imports",'OFERTA_VARIACION DE STOCK':'prim_stockvar',
@@ -450,7 +474,10 @@ def VacaMuerta(yr0 = 2020,
         # print(opex_cost[opex_cost['product']==p]['opex'].squeeze())
 
         #domestic_revenue
-        dom_rev = ((mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze())-exports[exports['year']==t]['exports_{}_{}'.format(w,k)].squeeze()-exports[exports['year']==t]['surplus_{}_{}'.format(w,k)].squeeze())*prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()
+        dom_rev = (((mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze())-
+                    exports[exports['year']==t]['exports_{}_{}'.format(w,k)].squeeze()-
+                    exports[exports['year']==t]['surplus_{}_{}'.format(w,k)].squeeze())*
+                    prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze())
 
         # #export revenue
         exp_rev = exports[exports['year']==t]['exports_{}_{}'.format(w,k)].squeeze()*prices[(prices['prod_type']=='{} ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()
@@ -475,8 +502,17 @@ def VacaMuerta(yr0 = 2020,
                 print("end of series")
         
         # #production subsidies       
-        prod_sub = share_covered*(mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze())*np.maximum(0,(prices[(prices['prod_type']=='{} ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()-prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()))
+        # prod_sub = share_covered*(mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze())*np.maximum(0,(prices[(prices['prod_type']=='{} ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()-prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()))
         
+        if k == 'Gas' :     
+            prod_sub = share_covered*mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze()*((prod_subsidy_p_ratio-1)*
+                    prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze())
+        else: prod_sub = 0
+        
+
+
+
+
         # #royalties
         royalties = royalty_rate[royalty_rate['prod_type']=='{}'.format(k)]['rate'].squeeze()*mp[mp['sim_year']==t]['{}_{}'.format(w,k)].squeeze()*prices[(prices['prod_type']=='{} Local ktoe'.format(k))&(prices['year']==t)]['value'].squeeze()
 
@@ -813,21 +849,31 @@ def VacaMuerta(yr0 = 2020,
             exports['net_imports_Oil'] = (exports['Oil_prod'] - exports['oil_cons'] + exports['oil_loss_adj']) 
             exports.loc[exports['net_imports_Oil'] > 0, 'net_imports_Oil'] = 0
 
-            exports['net_exports_Gas'] = (gas_export_decline)*(exports['Gas_prod'] - exports['gas_cons'] + exports['gas_loss_adj'])
-            exports.loc[exports['net_exports_Gas'] < 0, 'net_exports_Gas'] = 0   
+            exports['net_export_dem_Gas'] = (gas_export_decline)*(exports['Gas_prod'] - exports['gas_cons'] + exports['gas_loss_adj'])
+            exports.loc[exports['net_export_dem_Gas'] < 0, 'net_export_dem_Gas'] = 0 
+            exports = exports.assign(gas_ex_cap = gas_export_cap)
 
-            exports['net_exports_Oil'] = (oil_export_decline)*(exports['Oil_prod'] - exports['oil_cons'] + exports['oil_loss_adj'])
-            exports.loc[exports['net_exports_Oil'] < 0, 'net_exports_Oil'] = 0
+            exports.loc[exports['net_export_dem_Gas'] <= exports['gas_ex_cap'],'net_exports_Gas'] = exports['net_export_dem_Gas']          
+            exports.loc[exports['net_export_dem_Gas'] > exports['gas_ex_cap'],'net_exports_Gas'] = exports['gas_ex_cap']
+            exports['unexportable_gas_prod'] =np.maximum(0.0, exports['net_export_dem_Gas']-exports['gas_ex_cap'])
+
+            exports['net_export_dem_Oil'] = (oil_export_decline)*(exports['Oil_prod'] - exports['oil_cons'] + exports['oil_loss_adj'])
+            exports.loc[exports['net_export_dem_Oil'] < 0, 'net_export_dem_Oil'] = 0
+            exports = exports.assign(oil_ex_cap = oil_export_cap)
+
+            exports.loc[exports['net_export_dem_Oil'] <= exports['oil_ex_cap'],'net_exports_Oil'] = exports['net_export_dem_Oil'] 
+            exports.loc[exports['net_export_dem_Oil'] > exports['oil_ex_cap'],'net_exports_Oil'] = exports['oil_ex_cap']
+            exports['unexportable_oil_prod'] = np.maximum(0.0,exports['net_export_dem_Oil']-exports['oil_ex_cap'])
 
             exports['net_exports_El'] =  -exports['electricity_cons'] + exports['el_loss_adj']
 
-            exports['surplus_Gas'] = exports['Gas_prod']+exports['gas_loss_adj']- exports['net_exports_Gas']-exports['gas_cons']
+            exports['surplus_Gas'] = exports['Gas_prod']+exports['gas_loss_adj']- exports['net_exports_Gas']-exports['gas_cons'] + exports['unexportable_gas_prod']
             exports.loc[exports['surplus_Gas'] < 0, 'surplus_Gas'] = 0
-            exports['surplus_Oil'] = exports['Oil_prod']+exports['oil_loss_adj']- exports['net_exports_Oil']-exports['oil_cons']
+            exports['surplus_Oil'] = exports['Oil_prod']+exports['oil_loss_adj']- exports['net_exports_Oil']-exports['oil_cons']+ exports['unexportable_oil_prod']
             exports.loc[exports['surplus_Oil'] < 0, 'surplus_Oil'] = 0
 
-            exports['im_ex_Gas'] = (exports['Gas_prod'] - exports['gas_cons'] + exports['gas_loss_adj']) - exports['surplus_Gas']
-            exports['im_ex_Oil'] = (exports['Oil_prod'] - exports['oil_cons'] + exports['oil_loss_adj']) - exports['surplus_Oil']
+            exports['im_ex_Gas'] = np.minimum((exports['Gas_prod'] - exports['gas_cons'] + exports['gas_loss_adj']) - exports['surplus_Gas'],exports['gas_ex_cap'])
+            exports['im_ex_Oil'] = np.minimum((exports['Oil_prod'] - exports['oil_cons'] + exports['oil_loss_adj']) - exports['surplus_Oil'],exports['oil_ex_cap'])
 
             exports['exports_Unconventional_Gas'] = exports['net_exports_Gas'] *(mp['Unconventional_Gas']/exports['Gas_prod'] )
             exports['exports_Unconventional_Oil'] = exports['net_exports_Oil'] *(mp['Unconventional_Oil']/exports['Oil_prod'] )
@@ -841,6 +887,10 @@ def VacaMuerta(yr0 = 2020,
             exports['imports_Unconventional_Oil'] = exports['net_imports_Oil'] *(mp['Unconventional_Oil']/exports['Oil_prod'] )
             exports['imports_Conventional_Gas'] = exports['net_imports_Gas']-exports['imports_Unconventional_Gas']
             exports['imports_Conventional_Oil'] = exports['net_imports_Oil']-exports['imports_Unconventional_Oil']
+            exports['Unconventional_Gas_loss_adj'] = exports['gas_loss_adj'] * (mp['Unconventional_Gas']/exports['Gas_prod'])
+            exports['Conventional_Gas_loss_adj'] =  exports['gas_loss_adj'] * (mp['Conventional_Gas']/exports['Gas_prod'])
+            exports['Unconventional_Oil_loss_adj'] = exports['oil_loss_adj'] * (mp['Unconventional_Oil']/exports['Oil_prod'])
+            exports['Conventional_Oil_loss_adj'] = exports['oil_loss_adj'] * (mp['Conventional_Oil']/exports['Oil_prod'])
 
 
             # print(mp.head())
@@ -920,7 +970,7 @@ def VacaMuerta(yr0 = 2020,
 
     #Unsubsidized npv NPV as % GDP
     finance['disc_private_unsub_revenue'] = fiscal['discount_factor']*(fiscal['domestic revenue'] + fiscal['export revenue'])
-    finance['disc_exp']= fiscal['discount_factor'] *(fiscal['us_capex'] + fiscal['ds_capex']+ fiscal['opex'])
+    finance['disc_exp']= fiscal['discount_factor'] *(fiscal['us_capex'] + finance['private_ds_capex']+ fiscal['opex'])
     finance['disc_net_unsub_rev'] = finance['disc_private_unsub_revenue'] - finance['disc_exp']
     npv_unsub_gdp = (finance['disc_net_unsub_rev'].sum())/GDP*100
     
@@ -962,38 +1012,36 @@ def VacaMuerta(yr0 = 2020,
 
     return npv_gdp, npv_unsub_gdp, total_ft_gdp, wells_total,unconv_share, gas_share, gdp_npv_conv_gas,gdp_npv_conv_oil,gdp_npv_unconv_gas,gdp_npv_unconv_oil, ft_npv_conv_gas, ft_npv_conv_oil, ft_npv_unconv_gas, ft_npv_unconv_oil
 
-##run macro scenarios - domestic price remains subsidized, incentives for unconventional oil and gas  
+# ##run macro scenarios - domestic price remains subsidized, incentives for unconventional oil and gas  
 
 mp2050 = VacaMuerta(yr0 = 2020, final_yr = 2050, rcp = 'CURR', switch = 'pessimistic',pes_oil = 1.2,pes_gas = .66,
     a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
     l= 10.0, t_rate_gas = 0.01, t_rate_oil = 0.0, t_rate_e  = .01,
     us_capex_gas = 7100000, us_capex_oil = 7100000, 
-    m = 9542, oil_opex = (6.7/.146),  gas_opex = (17.29/.146),  
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, 
+    m = 9542, oil_opex = (6.7/.146),  gas_opex = (17.29/.146), prod_subsidy_p_ratio=1.3, 
+    share_covered = .67, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
+    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
     T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 643629000000, 
     export_share_oil = .18, export_share_gas =.0,  
-    gas_export_limits = 1.0, oil_export_limits = 1.0, 
-    gas_export_demand = 1.0, oil_export_demand = 1.0,
-    gas_demand_decline_speed = 5, oil_demand_decline_speed = 5, 
+    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 1.0, oil_export_dem_end = 1.0, gas_demand_decline_speed = 20, oil_demand_decline_speed = 20, 
+    gas_ex_cap_start = 1905, gas_ex_cap_end= 4631, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 33215, oil_ex_cap_increase = 30,
     conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.04, conv_prod_decline_end_oil =.04, 
     unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.00, unconv_prod_decline_end_oil =.00,
-    cons_wedge_start_gas = 3, cons_wedge_end_gas = 5, cons_wedge_start_oil = 3, cons_wedge_end_oil = 3,
-    intl_wedge_start_gas = 2,  intl_wedge_end_gas = 4, intl_wedge_start_oil = 1, intl_wedge_end_oil = 1.0, 
-    gas_responsiveness = 1.,oil_responsiveness = 1.)  
+    cons_wedge_start_gas = 3, cons_wedge_end_gas = 3, cons_wedge_start_oil = 3, cons_wedge_end_oil = 3,
+    intl_wedge_start_gas = 2,  intl_wedge_end_gas = 3, intl_wedge_start_oil = 1, intl_wedge_end_oil = 1.0, 
+    gas_responsiveness = 1. ,oil_responsiveness = 1.)  
 
 mp2050_15 = VacaMuerta(yr0 = 2020, final_yr = 2050, rcp = '1.5', switch = 'optimistic',pes_oil = 1.2,pes_gas = .66,
     a_gas_res = .02, a_oil_res = .02, a_el_res = .02, a_gas_ind = .02,a_oil_ind = .02,a_el_ind = .02,a_gas_trans = .02,a_oil_trans = .02,a_el_trans = .02,
-    l= 10.0, t_rate_gas = -0.02, t_rate_oil = -0.02, t_rate_e  = .03,
+    l= 10.0, t_rate_gas = -0.02, t_rate_oil = -0.02, t_rate_e  = .04,
     us_capex_gas = 7100000, us_capex_oil = 7100000, 
-    m = 9542, oil_opex = (6.7/.146),  gas_opex = (17.29/.146),  
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
+    m = 9542, oil_opex = (6.7/.146),  gas_opex = (17.29/.146),  prod_subsidy_p_ratio=1.3,
+    share_covered = .67, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
     price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, 
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 643629000000, 
+    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 643629000000,public_ds_capex_share = 0.67, 
     export_share_oil = 0.18, export_share_gas =.0,  
-    gas_export_limits = 1.0, oil_export_limits = 1.0, 
-    gas_export_demand = 0.0, oil_export_demand = 0.0,
-    gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
+    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
+    gas_ex_cap_start = 1905, gas_ex_cap_end= 4631, gas_ex_cap_increase = 10,oil_ex_cap_start= 33215, oil_ex_cap_end= 33215, oil_ex_cap_increase = 10,
     conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
     unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.05, unconv_prod_decline_end_oil =.05,
     cons_wedge_start_gas = 3, cons_wedge_end_gas = 1, cons_wedge_start_oil = 3, cons_wedge_end_oil = 1,
@@ -1004,14 +1052,13 @@ mp2050_lock = VacaMuerta(yr0 = 2020, final_yr = 2050, rcp = '1.5', switch = 'loc
     a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
     l= 10.0, t_rate_gas = 0.01, t_rate_oil = 0.0, t_rate_e  = .01,
     us_capex_gas = 7100000, us_capex_oil = 7100000, 
-    m = 9542, oil_opex = (6.7/.146),  gas_opex = (17.29/.146),
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
+    m = 9542, oil_opex = (6.7/.146),  gas_opex = (17.29/.146), prod_subsidy_p_ratio=1.3,
+    share_covered = .67, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
     price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, 
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 643629000000, 
+    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 643629000000, public_ds_capex_share = 0.67,
     export_share_oil = .18, export_share_gas =.0,  
-    gas_export_limits = 1.0, oil_export_limits = 1.0,
-    gas_export_demand = .0, oil_export_demand = .0,
-    gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
+    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
+    gas_ex_cap_start = 1905, gas_ex_cap_end= 4631, gas_ex_cap_increase = 10,oil_ex_cap_start= 33215, oil_ex_cap_end= 33215, oil_ex_cap_increase = 10,
     conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
     unconv_prod_decline_start =.00, unconv_prod_decline_end_gas = .03, unconv_prod_decline_end_oil =.03,
     cons_wedge_start_gas = 3, cons_wedge_end_gas = 6, cons_wedge_start_oil = 3, cons_wedge_end_oil = 5,
@@ -1021,19 +1068,19 @@ mp2050_lock = VacaMuerta(yr0 = 2020, final_yr = 2050, rcp = '1.5', switch = 'loc
 # # #lock with transition to electricity
 # mp2050 = VacaMuerta(yr0 = 2020, final_yr = 2050, rcp = '1.5', switch = 'lock in',pes_oil = 1.2,pes_gas = .66,
 #     a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
-#     l= 10.0, t_rate_gas = -0.02, t_rate_oil = -0.02, t_rate_e  = .03,
+#     l= 10.0, t_rate_gas = -0.02, t_rate_oil = -0.02, t_rate_e  = .04,
 #     us_capex_gas = 7100000, us_capex_oil = 7100000, 
-#     m = 9542, oil_opex = (6.7/.146),  gas_opex = (17.29/.146), subsidy_bid_price_ratio = 1.05, 
+#     m = 9542, oil_opex = (6.7/.146),  gas_opex = (17.29/.146), 
 #     share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
 #     price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, 
 #     T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 643629000000, 
-#     well_cap_cost = 1350000, export_share_oil = .18, export_share_gas =.0,  
+#     export_share_oil = .18, export_share_gas =.0,  
 #     gas_export_limits = 1.0, oil_export_limits = 1.0,
 #     gas_export_demand = .0, oil_export_demand = .0,
-#     gas_demand_decline_speed = 15, oil_demand_decline_speed = 10, 
+#     gas_demand_decline_speed = 5, oil_demand_decline_speed = 5, 
 #     conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-#     unconv_prod_decline_start =.00, unconv_prod_decline_end_gas = .03, unconv_prod_decline_end_oil =.03,
-#     cons_wedge_start_gas = 3, cons_wedge_end_gas = 6, cons_wedge_start_oil = 3, cons_wedge_end_oil = 5,
+#     unconv_prod_decline_start =.00, unconv_prod_decline_end_gas = .00, unconv_prod_decline_end_oil =.0,
+#     cons_wedge_start_gas = 3, cons_wedge_end_gas = 6, cons_wedge_start_oil = 3, cons_wedge_end_oil = 3,
 #     intl_wedge_start_gas = 2,  intl_wedge_end_gas = 5, intl_wedge_start_oil = 1, intl_wedge_end_oil = 1, 
 #     gas_responsiveness = .05,oil_responsiveness = .05)
 
@@ -1165,35 +1212,35 @@ mp2050_lock = VacaMuerta(yr0 = 2020, final_yr = 2050, rcp = '1.5', switch = 'loc
 # # #save high level summary results for all 4 scenarios
 # print(mp2050)
 
-# print('Positive FT Gas')
-# print('npv_gdp')
-# print(mp2050[0])
-# print('npv_unsub_gdp')
-# print(mp2050[1])
-# print('total_ft_gdp')
-# print(mp2050[2])
-# print('total_wells')
-# print(mp2050[3])
-# print('unconv_share')
-# print(mp2050[4])
-# print('gas_share')
-# print(mp2050[5])
-# print('gdp_npv_conv_gas')
-# print(mp2050[6])
-# print('gdp_npv_conv_oil')
-# print(mp2050[7])
-# print('gdp_npv_unconv_gas')
-# print(mp2050[8])
-# print('gdp_npv_unconv_oil')
-# print(mp2050[9]) 
-# print('ft_npv_conv_gas')
-# print(mp2050[10])
-# print('ft_npv_conv_oil')
-# print(mp2050[11])
-# print('ft_npv_unconv_gas')
-# print(mp2050[12])
-# print('ft_npv_unconv_oil')
-# print(mp2050[13])
+print('Positive FT Gas')
+print('npv_gdp')
+print(mp2050[0])
+print('npv_unsub_gdp')
+print(mp2050[1])
+print('total_ft_gdp')
+print(mp2050[2])
+print('total_wells')
+print(mp2050[3])
+print('unconv_share')
+print(mp2050[4])
+print('gas_share')
+print(mp2050[5])
+print('gdp_npv_conv_gas')
+print(mp2050[6])
+print('gdp_npv_conv_oil')
+print(mp2050[7])
+print('gdp_npv_unconv_gas')
+print(mp2050[8])
+print('gdp_npv_unconv_oil')
+print(mp2050[9]) 
+print('ft_npv_conv_gas')
+print(mp2050[10])
+print('ft_npv_conv_oil')
+print(mp2050[11])
+print('ft_npv_unconv_gas')
+print(mp2050[12])
+print('ft_npv_unconv_oil')
+print(mp2050[13])
 
 out = pd.DataFrame([mp2050, mp2050_15,mp2050_lock])
 
