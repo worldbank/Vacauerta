@@ -957,7 +957,7 @@ def VacaMuerta(yr0 = 2020,
     # FT as % GDP
     finance['subsidies'] = fiscal['production subsidy']+fiscal['import subsidy']
     finance['govt_income'] = fiscal['export duties'] + fiscal['royalties']
-    finance['total gov transfers'] = finance['govt_income'] - finance['subsidies'] + finance['public_ds_capex']
+    finance['total gov transfers'] = finance['govt_income'] - finance['subsidies'] - finance['public_ds_capex']
     # finance['total gov transfers no imports'] = fiscal['export duties'] + fiscal['royalties']-fiscal['production subsidy']
     total_ft_gdp = ((fiscal['discount_factor']*finance['total gov transfers']).sum())/GDP*100
 
