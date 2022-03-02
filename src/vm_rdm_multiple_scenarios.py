@@ -1068,11 +1068,11 @@ if __name__ == "__main__":
                             RealParameter("gas_ex_cap_start",.0, 1.0), #Initial limits on volume of oil exports
                             RealParameter("gas_ex_cap_end",0.0 ,1.0), #final level of export demand internationally
                             IntegerParameter("gas_ex_cap_increase",5 ,30), #final level of export demand internationally
-                            RealParameter("oil_ex_cap_start",5 ,30),#years over which international demand for oil declines
-                            RealParameter("oil_ex_cap_end",5 ,30),#years over which international demand for oil declines
+                            RealParameter("oil_ex_cap_start",0.0 ,1.0),#years over which international demand for oil declines
+                            RealParameter("oil_ex_cap_end",0.0 ,1.0),#years over which international demand for oil declines
                             IntegerParameter("oil_ex_cap_increase",5 ,30), #final level of export demand internationally
-                            RealParameter("gas_export_dem_start",.0, 1.0), #Initial limits on volume of gas exports
-                            RealParameter("oil_export_dem_start",.0, 1.0), #Initial limits on volume of oil exports
+                            RealParameter("gas_export_dem_start",0.0, 1.0), #Initial limits on volume of gas exports
+                            RealParameter("oil_export_dem_start",0.0, 1.0), #Initial limits on volume of oil exports
                             RealParameter("gas_export_dem_end",0.0 ,1.0), #final level of export demand internationally
                             RealParameter("oil_export_dem_end",0.0 ,1.0), #final level of export demand internationally
                             IntegerParameter("gas_demand_decline_speed",5 ,30),#years over which international demand for oil declines
