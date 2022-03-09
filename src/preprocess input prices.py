@@ -23,47 +23,67 @@ indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Va
 
 # load: 
 ngfs_indices = pd.read_csv(indir+"Python\\inputs\\price_indices_ngfs.csv")
+del ngfs_indices ["Variable"]
+del ngfs_indices ["Unit"]
 
 #reshape wide to long
-ngfs_long=pd.melt(ngfs_indices,id_vars=['Model','Scenario','Region','Variable','Unit'],var_name='year', value_name='values')
+ngfs_long=pd.melt(ngfs_indices,id_vars=['Model','Scenario','Region','stage','type'],var_name='year', value_name='values').reset_index()
 
-ngfs_long['col_index'] = ngfs_long['Model']+"_"+ngfs_long['Scenario']+"_"+ngfs_long['Region']+"_"+ngfs_long['Variable']+"_"+ngfs_long['Unit']
+ngfs_long['col_index'] = ngfs_long['Model']+"_"+ngfs_long['Scenario']+"_"+ngfs_long['Region']+"_"+ngfs_long['stage']+"_"+ngfs_long['type']
 
 ngfs_long = ngfs_long.pivot_table(
         values='values', 
         index=['year'], 
-        columns=['Model','Scenario','Region','Variable','Unit'])
+        columns=['col_index'])
+
 ngfs_long['new'] = ngfs_long.index.astype(str).astype(int)
 
 ngfs_long.index = pd.to_datetime(ngfs_long.index, format='%Y')
 idx = pd.date_range(ngfs_long.index.min(), ngfs_long.index.max(), freq='Y')
-oidx= ngfs_long.indexf
+oidx= ngfs_long.index
 
-# Reindex and interpolate with cubicspline as an example
 res = ngfs_long.reindex(oidx.union(idx)).interpolate('linear')
-print(res.tail())
-res.to_csv(outdir+'ngfs interpolate test.csv')
+del res["new"]
+# print(res.tail())
+# res.to_csv(outdir+'annual interpolate tesst.csv')
 
-poles = read_csv(indir+'Report\\POLES Data Combined\\POLES Scenarios Combined.csv')
+
+#now POLES
+poles = read_csv(indir+'Python\\inputs\\POLES Scenarios Combined.csv')
 #reshape long
-poles_long=pd.melt(poles,id_vars=['Indicator','Sector','Category','Units','Subcategory','Scenario'],var_name='year', value_name='values')
-print(poles_long.head())
-poles_long['col_index'] = poles_long['Indicator']+"_"+poles_long['Sector']+"_"+poles_long['Category']+"_"+poles_long['Units']+"_"+poles_long['Subcategory']+"_"+poles_long['Scenario']
+poles = poles.loc[poles['Category']=="Prices"]
+poles_long=pd.melt(poles,id_vars=['Indicator','Sector','Category','Units','Subcategory','Scenario',"ID"],var_name='year', value_name='values')
+poles_long['year'] = poles_long['year'].astype(str).astype(int)
+poles_long = poles_long.loc[poles_long['year']>=2015]
+del poles_long["Sector"]
+del poles_long["Subcategory"]
+del poles_long["ID"]
+del poles_long["Units"]
+
+#index values
+poles_long['col_index'] = 'POLES_'+poles_long['Scenario']+'_World_Primary Energy_'+poles_long['Indicator']
+index_2020 = poles_long[poles_long['year']==2020]
 
 poles_long = poles_long.pivot_table(
         values='values', 
         index=['year'], 
-        columns=['Indicator','Sector','Category','Units','Subcategory','Scenario'])
-poles_long['new'] = poles_long.index.astype(str).astype(int)
+        columns=['col_index'])
 
+collist = poles_long.columns.values.tolist()
+
+for c in collist:
+    poles_long[c] = poles_long[c]/index_2020[index_2020['col_index']==c]['values'].squeeze()
+
+poles_long.to_csv(outdir+"polestest.csv")
 poles_long.index = pd.to_datetime(poles_long.index, format='%Y')
 idx = pd.date_range(poles_long.index.min(), poles_long.index.max(), freq='Y')
 oidx= poles_long.index
 
-# Reindex and interpolate with cubicspline as an example
-res = poles_long.reindex(oidx.union(idx)).interpolate('linear')
-print(res.tail())
-res.to_csv(outdir+'poles interpolate test.csv')
+# Reindex and interpolate 
+poles = poles_long.reindex(oidx.union(idx)).interpolate('linear')
 
-#
-#ngfs_price = 
+#merge with ngfs and reindex to 2021
+indices = pd.merge(res,poles, left_index=True, right_index=True)
+indices.to_csv(outdir+"indices.csv")
+
+my_list = indices.columns.values.tolist() 

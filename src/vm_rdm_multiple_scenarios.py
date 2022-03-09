@@ -32,7 +32,7 @@ indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Va
 # os.chdir('/home/wb411133/Code/Vacauerta/src')
 # indir = "/home/wb411133/temp/ARG_CCDR/inputs/"
 
-num_experiments = 50
+num_experiments = 100
 n_processes = None #for multi-processing - setting any values is slower than setting to none
 # outdir = f"/home/wb411133/temp/ARG_CCDR/outputs_v2/n_{num_experiments}/"
 if not os.path.exists(outdir):
@@ -119,8 +119,8 @@ def VacaMuerta(yr0 = 2020,
                 intl_wedge_start_oil = 1, 
                 intl_wedge_end_oil = 1, 
                 well_life = 25,
-                oil_responsiveness = .01,
-                gas_responsiveness = .01, 
+                oil_responsiveness = 1.0,
+                gas_responsiveness = 1.0, 
                 public_ds_capex_share = 0.67):
 
     # #supply side
@@ -191,10 +191,14 @@ def VacaMuerta(yr0 = 2020,
     ##          Prices            ##
     ################################
     #read in price scenarios - Brent crude for oil, henry hub for gas for now
-    #SDT 1.18 BRING IN POLS and NRGC to test
 
+
+    #read in historical prices
     prices = pd.read_csv(indir + "Prices_hist.csv").set_index('year')
     prices = prices.iloc[10: , :]
+
+    #read in forecast price indices
+    
 
     # gas_gr = np.random.normal(gas_price_gr_mean, gas_price_gr_std)
     # print(gas_gr)
@@ -430,7 +434,7 @@ def VacaMuerta(yr0 = 2020,
         cons = (cons_df[cons_df['year']==t-1][prev_cons].squeeze())*(1+a)**-(1+ped_sr)*((income[income['year']==t]['Ln_GDPPC'].squeeze()/
         income[income['year']==t-1]['Ln_GDPPC'].squeeze())**ped_inc)*((prices[(prices['year']==t) & (prices['prod_type']==price_type)]['value'].squeeze()/
         prices[(prices['year']==t-1) & (prices['prod_type']==price_type)]['value'].squeeze())**ped_sr)*((prices[(prices['year']==t) & (prices['prod_type']==price_type)]['value'].squeeze()/
-        prices[(prices['year']==t-l) & (prices['prod_type']==price_type)]['value'].squeeze())**((ped_lr*(1+ped_sr))/l))
+        prices[(prices['year']==t-1) & (prices['prod_type']==price_type)]['value'].squeeze())**((ped_lr*(1+ped_sr))/1))
         
         return cons
 
@@ -721,7 +725,7 @@ def VacaMuerta(yr0 = 2020,
                                 s =   round(np.maximum(0.0, conv_start_gr[conv_start_gr['prod_type']=='{}'.format(k)]['rate'].squeeze()*df.loc[(p,w,t-1,k),'starts']),0)
 
                         
-                        if df.loc[(p,w,t-1,k),'starts'].squeeze() <= 0.0 or df.loc[(p,w,t-1,k),'avgd_starts'].squeeze() <= 0.0  :
+                        if df.loc[(p,w,t-1,k),'starts'].squeeze() <= 1.0 or df.loc[(p,w,t-1,k),'avgd_starts'].squeeze() <= 1.0  :
                             avg_s = 0.0
                             s = 0.0
 
@@ -1020,7 +1024,7 @@ if __name__ == "__main__":
                             RealParameter('opp_cost_debt',.0,.15), #opportunity cost of own debt
                             RealParameter("pes_oil",.6, 1.4), #price elasticity of supply - oil 
                             RealParameter("pes_gas",0.59, 1.2), #price elasticity of supply - gas                 
-                            IntegerParameter("l",2, 20), #lag in price elasticity response
+                            # IntegerParameter("l",2, 20), #lag in price elasticity response
                             RealParameter("t_rate_gas",-.1, 0.1), #transition rate towards gas 
                             RealParameter("t_rate_oil",-.1, 0.1), #transition rate towards oil
                             RealParameter("t_rate_e",-.1, .1), #transition rate towards electricity
@@ -1059,11 +1063,11 @@ if __name__ == "__main__":
                             RealParameter("a_el_res",0.0, .1), #energy efficiency improvement rate residential electricity 
                             RealParameter("a_el_ind",0.0, .1), #energy efficiency improvement rate industrial electricity
                             IntegerParameter("well_life",10 ,35), #expected lifetime of an active well
-                            RealParameter("gas_ex_cap_start",.0, 1905.0), #Initial limits on volume of oil exports
+                            # RealParameter("gas_ex_cap_start",1905.0, 1905.0), #Initial limits on volume of oil exports
                             RealParameter("gas_ex_cap_end",1905 ,4631.0), #final level of export demand internationally
                             IntegerParameter("gas_ex_cap_increase",5 ,30), #final level of export demand internationally
-                            RealParameter("oil_ex_cap_start",33215, 76650),#years over which international demand for oil declines
-                            RealParameter("oil_ex_cap_end",0.0 ,1.0),#years over which international demand for oil declines
+                            # RealParameter("oil_ex_cap_start",33215, 33215),#years over which international demand for oil declines
+                            RealParameter("oil_ex_cap_end",33215 ,76650),#years over which international demand for oil declines
                             IntegerParameter("oil_ex_cap_increase",5 ,30), #final level of export demand internationally
                             RealParameter("gas_export_dem_start",0.0, 1.0), #Initial limits on volume of gas exports
                             RealParameter("oil_export_dem_start",0.0, 1.0), #Initial limits on volume of oil exports
@@ -1071,8 +1075,8 @@ if __name__ == "__main__":
                             RealParameter("oil_export_dem_end",0.0 ,1.0), #final level of export demand internationally
                             IntegerParameter("gas_demand_decline_speed",5 ,30),#years over which international demand for oil declines
                             IntegerParameter("oil_demand_decline_speed",5 ,30),#years over which international demand for oil declines
-                            RealParameter("oil_responsiveness",0.0, 1.0), #sensitivity of prices to to stock var
-                            RealParameter("gas_responsiveness",0.0, 1.0), #sensitivity of prices to to stock var
+                            # RealParameter("oil_responsiveness",0.0, 1.0), #sensitivity of prices to to stock var
+                            # RealParameter("gas_responsiveness",0.0, 1.0), #sensitivity of prices to to stock var
                             RealParameter("public_ds_capex_share",0.0, 1.0) #share of downstream capital provided by public
 ]      
 
@@ -1111,17 +1115,17 @@ if __name__ == "__main__":
     df =  reshape_array(outcomes["fiscal_td"])
 
     exports = pd.DataFrame(reshape_array(outcomes["exports"]))
-    exports.to_csv(outdir+"physical ts outcomes.csv")
+    exports.to_csv(outdir+"physical ts outcomes_2.csv")
 
     trade = pd.DataFrame(df)
-    trade.to_csv(outdir+"fiscal ts outcomes.csv")
+    trade.to_csv(outdir+"fiscal ts outcomes_2.csv")
     del outcomes['fiscal_td']
     del outcomes['exports']
 
     outcomes2 = pd.DataFrame(outcomes)
     experiments2 = pd.DataFrame(experiments)
-    experiments2.to_csv(outdir+"vm_experiments.csv")
-    outcomes2.to_csv(outdir+"vm_outcomes.csv")
+    experiments2.to_csv(outdir+"vm_experiments_2.csv")
+    outcomes2.to_csv(outdir+"vm_outcomes_2.csv")
 
 #     policies = experiments['policy']
 #     print(policies)
@@ -1131,7 +1135,7 @@ if __name__ == "__main__":
     fig, axes = pairs_plotting.pairs_scatter(experiments, outcomes, group_by='policy',
                                             legend=False)
     fig.set_size_inches(16,16)
-    plt.savefig(outdir+'pairs.png', bbox_inches="tight")
+    plt.savefig(outdir+'pairs_2.png', bbox_inches="tight")
     plt.clf()
 
     #feature scoring
@@ -1143,7 +1147,7 @@ if __name__ == "__main__":
     fs = feature_scoring.get_feature_scores_all(x, y)
     heatmap = sns.heatmap(fs, cmap='viridis', annot=True)
     # plt.show()
-    plt.savefig(outdir+'feature_scoring.png', bbox_inches="tight")
+    plt.savefig(outdir+'feature_scoring_2.png', bbox_inches="tight")
     end_time = time.time()
     print(f'Runtime: {end_time-start_time}')
     
