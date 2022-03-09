@@ -32,7 +32,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 os.chdir('/home/wb411133/Code/Vacauerta/src')
 indir = "/home/wb411133/temp/ARG_CCDR/inputs/"
 
-num_experiments =500
+num_experiments =10000
 
 n_processes = None #for multi-processing - setting any values is slower than setting to none
 outdir = f"/home/wb411133/temp/ARG_CCDR/outputs_v3/n_{num_experiments}/"
