@@ -25,16 +25,17 @@ from ema_workbench.analysis import prim
 warnings.simplefilter(action='ignore', category=FutureWarning)
 # print('hello')
 
-os.chdir('C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\src')
-outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\"
-indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'#
+# os.chdir('C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\src')
+# outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\"
+# indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'#
 
-# os.chdir('/home/wb411133/Code/Vacauerta/src')
-# indir = "/home/wb411133/temp/ARG_CCDR/inputs/"
+os.chdir('/home/wb411133/Code/Vacauerta/src')
+indir = "/home/wb411133/temp/ARG_CCDR/inputs/"
 
-num_experiments = 100
+num_experiments =500
+
 n_processes = None #for multi-processing - setting any values is slower than setting to none
-# outdir = f"/home/wb411133/temp/ARG_CCDR/outputs_v2/n_{num_experiments}/"
+outdir = f"/home/wb411133/temp/ARG_CCDR/outputs_v3/n_{num_experiments}/"
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
@@ -905,7 +906,7 @@ def VacaMuerta(yr0 = 2020,
                         cumratio +=ratio
 
                         if exports.loc[(exports['year']==t),'surplus_{}'.format(k)].squeeze() > 1.0:
-                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'] = (prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze() -
+                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'] = (prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'].squeeze() -
                                                                                                                                 (1-1/(1+ratio))*responsiveness[responsiveness['prod_type']=='{}'.format(k)]['rate'].squeeze()*prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'].squeeze())
                         
                         # (pow(ratio,well_response[well_response['prod_type']=='{}'.format(k)]['rate'].squeeze()))                                                                                                                    
@@ -914,8 +915,12 @@ def VacaMuerta(yr0 = 2020,
                         
                         #print(prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_{}_{}'.format(w,k)),'value'].squeeze())
                         else:
-                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_Conventional_{}'.format(k)),'value'] = prices.loc[(prices['year']==t+1)&(prices['prod_type']=='{} ktoe'.format(k)),'value'].squeeze()              
-                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_Conventional_{}'.format(k)),'value'] = prices.loc[(prices['year']==t+1)&(prices['prod_type']=='{} Local ktoe'.format(k)),'value'].squeeze()
+                            # prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_Conventional_{}'.format(k)),'value'] = 1/2*(prices.loc[(prices['year']==t+1)&(prices['prod_type']=='{} ktoe'.format(k)),'value'].squeeze() + prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'].squeeze())             
+                            # prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_Conventional_{}'.format(k)),'value'] = 1/2*(prices.loc[(prices['year']==t+1)&(prices['prod_type']=='{} Local ktoe'.format(k)),'value'].squeeze()+ prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze())
+                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'] =  1/2*(prices.loc[(prices['year']==t+1)&(prices['prod_type']=='{} ktoe'.format(k)),'value'].squeeze()+(prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'].squeeze() -
+                                                                                                                                (1-1/(1+ratio))*responsiveness[responsiveness['prod_type']=='{}'.format(k)]['rate'].squeeze()*prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_price_Unconventional_{}'.format(k)),'value'].squeeze()))
+                            prices.loc[(prices['year']==t+1)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'] =  1/2*(prices.loc[(prices['year']==t+1)&(prices['prod_type']=='{} Local ktoe'.format(k)),'value'].squeeze()+(prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze() -
+                                                                                                                                (1-1/(1+ratio))*responsiveness[responsiveness['prod_type']=='{}'.format(k)]['rate'].squeeze()*prices.loc[(prices['year']==t)&(prices['prod_type']=='expected_local_price_Unconventional_{}'.format(k)),'value'].squeeze()))
 
             for w in well_type: 
                 for p in production_type: 
