@@ -24,29 +24,28 @@ indir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\V
 outdir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\plots\\'
 
 #load phsyical flows
-exports_lock = pd.read_csv(indir+"exports_1.5_lock in.csv")
-exports_pess = pd.read_csv(indir+"exports_CURR_pessimistic.csv")
-exports_1_5 = pd.read_csv(indir+"exports_1.5_optimistic.csv")
+exports_lock = pd.read_csv(indir+"exports_1.5_lock_in_06.csv")
+exports_pess = pd.read_csv(indir+"exports_CURR_pessimistic_06.csv")
+exports_1_5 = pd.read_csv(indir+"exports_1.5_optimistic_06.csv")
 
 #load fiscal data 
-fiscal_lock = pd.read_csv(indir+"fiscal_1.5_lock in.csv")
+fiscal_lock = pd.read_csv(indir+"fiscal_1.5_lock_in_06.csv")
 fiscal_lock['import subsidy'] = -1*fiscal_lock['import subsidy'] 
 fiscal_lock = fiscal_lock.pivot_table(index="year", 
                     columns=['well_type','product'], 
                     values=['price','ds_capex','opex','domestic revenue','export revenue','production subsidy','import subsidy','royalties','export duties','us_capex','starts','trade balance'])
 
-fiscal_pess = pd.read_csv(indir+"fiscal_CURR_pessimistic.csv")
+fiscal_pess = pd.read_csv(indir+"fiscal_CURR_pessimistic_06.csv")
 fiscal_pess['import subsidy'] = -1*fiscal_pess['import subsidy'] 
 fiscal_pess = fiscal_pess.pivot_table(index="year", 
                     columns=['well_type','product'], 
                     values=['price','ds_capex','opex','domestic revenue','export revenue','production subsidy','import subsidy','royalties','export duties','us_capex','starts', 'trade balance'])
 
-fiscal_1_5 = pd.read_csv(indir+"fiscal_1.5_optimistic.csv")
+fiscal_1_5 = pd.read_csv(indir+"fiscal_1.5_optimistic_06.csv")
 fiscal_1_5['import subsidy'] = -1*fiscal_1_5['import subsidy'] 
 fiscal_1_5 = fiscal_1_5.pivot_table(index="year", 
                     columns=['well_type','product'], 
                     values=['price','ds_capex','opex','domestic revenue','export revenue','production subsidy','import subsidy','royalties','export duties','us_capex','starts', 'trade balance'])
-
 
 
 #df.loc[:, ("bar", "one")]

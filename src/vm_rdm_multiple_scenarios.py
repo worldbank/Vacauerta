@@ -25,17 +25,16 @@ from ema_workbench.analysis import prim
 warnings.simplefilter(action='ignore', category=FutureWarning)
 # print('hello')
 
-# os.chdir('C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\src')
-# outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\"
-# indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'#
+num_experiments =100
+os.chdir('C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\src')
+outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs_rdm\\outputs_v4\\n_{num_experiments}"
+indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'#
 
-os.chdir('/home/wb411133/Code/Vacauerta/src')
-indir = "/home/wb411133/temp/ARG_CCDR/inputs/"
-
-num_experiments =10000
+# os.chdir('/home/wb411133/Code/Vacauerta/src')
+# indir = "/home/wb411133/temp/ARG_CCDR/inputs/"
 
 n_processes = None #for multi-processing - setting any values is slower than setting to none
-outdir = f"/home/wb411133/temp/ARG_CCDR/outputs_v3/n_{num_experiments}/"
+# outdir = f"outputs_rdm\\outputs_v4\\n_{num_experiments}/"
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
@@ -901,7 +900,7 @@ def VacaMuerta(yr0 = 2020,
                         #make responsive to changes in the surplus exports v imports
                         
                         # ratio = safe_div(exports.loc[(exports['year']==t),'surplus_{}_{}'.format(w,k)].squeeze(),exports.loc[(exports['surplus_{}_{}'.format(w,k)]>1).idxmax,'surplus_{}_{}'.format(w,k)].squeeze())
-                        ratio = safe_div(exports.loc[(exports['year']==t),'surplus_{}'.format(k)].squeeze(),exports.loc[(exports['year']==t),'{}_prod'.format(k)].squeeze())
+                        ratio = safe_div(exports.loc[(exports['year']==t-1),'surplus_{}'.format(k)].squeeze(),exports.loc[(exports['year']==t-1),'{}_prod'.format(k)].squeeze())
 
                         cumratio +=ratio
 
@@ -1030,12 +1029,12 @@ if __name__ == "__main__":
                             RealParameter("pes_oil",.6, 1.4), #price elasticity of supply - oil 
                             RealParameter("pes_gas",0.59, 1.2), #price elasticity of supply - gas                 
                             # IntegerParameter("l",2, 20), #lag in price elasticity response
-                            RealParameter("t_rate_gas",-.1, 0.1), #transition rate towards gas 
-                            RealParameter("t_rate_oil",-.1, 0.1), #transition rate towards oil
+                            RealParameter("t_rate_gas",-.05, 0.105), #transition rate towards gas 
+                            RealParameter("t_rate_oil",-.05, 0.05), #transition rate towards oil
                             RealParameter("t_rate_e",-.1, .1), #transition rate towards electricity
                             RealParameter("us_capex_gas",200000, 4000000), #Cost of upstream capex expenditure 
                             RealParameter("us_capex_oil",200000, 4000000), #Cost of upstream capex expenditure 
-                            RealParameter("m",2000, 100000), #cost of downstream gas capital expenditure
+                            RealParameter("m",2000, 30000), #cost of downstream gas capital expenditure
                             RealParameter("oil_opex",10, 200), #operations costs for gas invetments 
                             RealParameter("gas_opex",10, 200), #operations costs for gas invetments 
                             RealParameter("share_covered",0.0, .70), #Wshare of production supported by production subsidies
