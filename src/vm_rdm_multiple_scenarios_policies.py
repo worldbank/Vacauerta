@@ -27,7 +27,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 num_experiments = 1000
 # os.chdir('C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\src')
-# outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs_rdm\\outputs_v5\\n_1000\\"
+# outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs_rdm\\outputs_v5\\n_100\\"
 # indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'#
 
 os.chdir('/home/wb411133/Code/Vacauerta/src')
@@ -1171,14 +1171,15 @@ if __name__ == "__main__":
                             RealParameter("us_capex_gas",3000000, 12000000), #Cost of upstream capex expenditure 
                             RealParameter("us_capex_oil",3000000, 12000000), #Cost of upstream capex expenditure 
                             RealParameter("m",2000, 25000), #cost of downstream gas capital expenditure
-                            RealParameter("oil_opex",1, 20), #operations costs for gas invetments 
-                            RealParameter("gas_opex",1, 20), #operations costs for gas invetments 
+                            RealParameter("oil_opex",.5, 20), #operations costs for gas invetments 
+                            RealParameter("gas_opex",.5, 20), #operations costs for gas invetments 
                             RealParameter("conv_start_gr_gas", 0,.8),#growth rate in onventional oil and gas starts
                             RealParameter("conv_start_gr_oil", 0,.8),#growth rate in onventional oil and gas starts
                             RealParameter("conv_prod_decline_end_gas", 0,.12),#exogenous production decline 
                             RealParameter("conv_prod_decline_end_oil", 0,.12),#exogenous production decline 
                             RealParameter("unconv_prod_decline_end_gas", 0,.12), #exogenous production decline in response to decarbonization
                             RealParameter("unconv_prod_decline_end_oil", 0,.12), #exogenous production decline in response to decarbonization
+                            RealParameter("foreign_capex_share", 0,.40), #exogenous production decline in response to decarbonization
                             IntegerParameter("well_life",10 ,35), #expected lifetime of an active well
                             # RealParameter("gas_ex_cap_start",1905.0, 1905.0), #Initial limits on volume of oil exports
                             #RealParameter("gas_export_dem_start",0.0, 1.0), #Initial limits on volume of gas exports
@@ -1186,9 +1187,7 @@ if __name__ == "__main__":
                             RealParameter("gas_export_dem_end",0.0 ,1.0), #final level of export demand internationally
                             RealParameter("oil_export_dem_end",0.0 ,1.0), #final level of export demand internationally
                             IntegerParameter("gas_demand_decline_speed",5 ,30),#years over which international demand for oil declines
-                            IntegerParameter("oil_demand_decline_speed",5 ,30),#years over which international demand for oil declines
-                            # RealParameter("oil_responsiveness",0.0, 1.0), #sensitivity of prices to to stock var
-                            # RealParameter("gas_responsiveness",0.0, 1.0), #sensitivity of prices to to stock var
+                            IntegerParameter("oil_demand_decline_speed",5 ,30)#years over which international demand for oil declines
                             ]      
 
     model.outcomes = [ScalarOutcome("npv_gdp"),
@@ -1225,6 +1224,7 @@ if __name__ == "__main__":
                     RealParameter("price_threshold_oil",50, 70),  #price threshold for payment of export duties
                     RealParameter("price_floor_gas",1.5, 4.0), #price floor for payment of export duties
                     RealParameter("price_floor_oil",35, 50), #price floor for payment of export duties
+                     RealParameter("profit_tax_rate",.0, .50), #royalty rate for domestic production
                     RealParameter('cons_wedge_end_gas',.5,5.0), #Wedge between domestic producer prices and domestic producer prices
                     RealParameter("cons_wedge_end_oil",.5,5.0), #Wedge between domestic producer prices and domestic producer prices
                     RealParameter('intl_wedge_end_gas',.5,5.0), #Wedge between international producer prices and domestic producer prices
@@ -1240,7 +1240,7 @@ if __name__ == "__main__":
                     RealParameter("a_el_ind",0.0, .06), #energy efficiency improvement rate industrial electricity
                     RealParameter("gas_ex_cap_end",1905 , 42795), #final level of export demand internationally
                     IntegerParameter("gas_ex_cap_increase",1, 30), #final level of export demand internationally
-                    RealParameter("oil_ex_cap_end",33215 ,76650),#years over which international demand for oil declines
+                    RealParameter("oil_ex_cap_end",33215,110000),#years over which international demand for oil declines
                     IntegerParameter("oil_ex_cap_increase",1 ,30), #final level of export demand internationally
     ]
 
