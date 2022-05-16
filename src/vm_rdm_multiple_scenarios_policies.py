@@ -4,46 +4,46 @@ Last modified by Sara Turner on 8.18.2021
 
 '''
 
-#import warnings
-# #print("warnings gone")
-# warnings.simplefilter('ignore', ImportWarning)
-# warnings.filterwarnings('ignore', message='netlogo connector not available')
-print('hello')
+import warnings, os, time
+import logging.handlers
 
-from xml.dom import pulldom
-from ema_workbench import (Model, RealParameter,CategoricalParameter, IntegerParameter, TimeSeriesOutcome, ema_logging, perform_experiments)
-# from ema_workbench.connectors.excel import ExcelModel
-from ema_workbench.em_framework.evaluators import MultiprocessingEvaluator
-from ema_workbench.em_framework.outcomes import ArrayOutcome, ScalarOutcome
-from ema_workbench.util import ema_exceptions
-#from ema_workbench.analysis.plotting import lines
-from ema_workbench.analysis import pairs_plotting
-from ema_workbench.analysis import prim
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import os 
+
 from pandas.core.indexing import convert_missing_indexer, convert_to_index_sliceable
-import os 
-import warnings
 from math import floor
+from xml.dom import pulldom
+from ema_workbench import (Model, RealParameter,CategoricalParameter, IntegerParameter, Policy, TimeSeriesOutcome, ema_logging, perform_experiments)
+from ema_workbench.em_framework.evaluators import MultiprocessingEvaluator
+from ema_workbench.em_framework.outcomes import ArrayOutcome, ScalarOutcome
+from ema_workbench.util import ema_exceptions
+from ema_workbench.analysis import pairs_plotting
+from ema_workbench.analysis import prim
 
-#set wd
-# Print the current working directory
-#print("Current working directory: {0}".format(os.getcwd()))
+warnings.simplefilter(action='ignore', category=FutureWarning)
+# print('hello')
 
-# Change the current working directory
-os.chdir('C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\src')
-#print("Current working directory: {0}".format(os.getcwd()))
+num_experiments = 1000
+# os.chdir('C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\src')
+# outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs_rdm\\outputs_v5\\n_1000\\"
+# indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'#
 
-outdir = "C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\"
-indir ='C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\inputs\\'
-# outdir = 'C:\\Users\\wb558960\\OneDrive - WBG\\CCDRs LAC\\Argentina\\DeepDives\\Vaca Muerta\\Python\\outputs\\'
+os.chdir('/home/wb411133/Code/Vacauerta/src')
+indir = "/home/wb411133/temp/ARG_CCDR/inputs/"
 
-num_experiments = 100
+n_processes = None #for multi-processing - setting any values is slower than setting to none
+outdir = f"outputs_rdm\\outputs_v6\\n_{num_experiments}/"
+if not os.path.exists(outdir):
+    os.makedirs(outdir)
 
-
+#postprocessiong
+def reshape_array (array):
+    m,n,r = array.shape
+    out_arr = np.column_stack((np.repeat(np.arange(m),n),array.reshape(m*n,-1)))
+    out_df = pd.DataFrame(out_arr)
+    return out_df
 def VacaMuerta(yr0 = 2020, 
                 final_yr = 2050, 
                 model = "POLES",
@@ -188,7 +188,7 @@ def VacaMuerta(yr0 = 2020,
     production_profiles = gas_prod.append(oil_prod, ignore_index = True)
     production_profiles = production_profiles.rename(columns = {'recurso': 'well_type','production_type':'product', 'oil_or_gas':'prod_type','popt_hyp1':'b','popt_hyp2':'di'})
     production_profiles['well_type'] = production_profiles['well_type'].replace({'CONVENCIONAL':'Conventional', 'NO CONVENCIONAL':'Unconventional'}) 
-    production_profiles.to_csv(outdir+"production profiles.csv")
+    # production_profiles.to_csv(outdir+"production profiles.csv")
 
     ################################
     ##          Prices            ##
@@ -987,12 +987,12 @@ def VacaMuerta(yr0 = 2020,
     fiscal=fiscal.reset_index()
     fiscal['discount_factor'] = 1/(1*(1 + wacc)**(fiscal['year']-yr0-1))
     
-    # # discount factor calculation - in RDM
+    # discount factor calculation - in RDM
     # fiscal=fiscal.reset_index()
     # fiscal['discount_factor'] = 1/(1*(1 + wacc)**(fiscal['year']-yr0-1))
-    # fiscal['col_name'] = fiscal['product']+ "_" + fiscal['well_type']
-    # fiscal_td = fiscal.pivot(index="year", columns=["col_name"],values=["price","ds_capex",'opex','domestic revenue','export revenue','production subsidy','import subsidy','royalties','export duties','trade balance','us_capex','starts','discount_factor'])  
-    # fiscal_collist = [' '.join(col).strip() for col in fiscal_td.columns.values]
+    fiscal['col_name'] = fiscal['product']+ "_" + fiscal['well_type']
+    fiscal_td = fiscal.pivot(index="year", columns=["col_name"],values=["price","ds_capex",'opex','domestic revenue','export revenue','production subsidy','import subsidy','royalties','export duties','trade balance','us_capex','starts','discount_factor'])  
+    fiscal_collist = [' '.join(col).strip() for col in fiscal_td.columns.values]
 
 
     ############################
@@ -1105,7 +1105,7 @@ def VacaMuerta(yr0 = 2020,
     finance['disc_net_rev'] = finance['disc_revenue'] - finance['disc_exp']
     npv_gdp = (finance['disc_net_rev'].sum())/GDP*100
 
-    #Unsubsidized npv NPV as % GDP
+        #Unsubsidized npv NPV as % GDP
     finance['disc_private_unsub_revenue'] = fiscal['discount_factor']*(fiscal['domestic revenue'] + fiscal['export revenue'])
     finance['disc_exp']= fiscal['discount_factor'] *(fiscal['us_capex'] + finance['private_ds_capex']+ fiscal['opex'])
     finance['disc_net_unsub_rev'] = finance['disc_private_unsub_revenue'] - finance['disc_exp']
@@ -1132,353 +1132,180 @@ def VacaMuerta(yr0 = 2020,
     wells_output = df['avgd_starts'].groupby(['prod_type','well_type']).sum()
     wells_total = df['avgd_starts'].sum()
 
-    try: 
-        finance.to_csv(outdir+'finance_{}_{}.csv'.format(rcp, switch))
-        fiscal.to_csv(outdir+"fiscal_{}_{}.csv".format(rcp, switch))
-        cc.to_csv(outdir+"us_capex_{}_{}.csv".format(rcp, switch))
-        cons.to_csv(outdir+"consumption_{}_{}.csv".format(rcp, switch))
-        exports.to_csv(outdir+"exports_{}_{}.csv".format(rcp, switch))
-        macro_inputs.to_csv(outdir+"macro_inputs_{}_{}.csv".format(rcp, switch))
-        #note this value is about 10k ktoe below minem for 2020 because it excludes own consumption. Could add to match + keep same going forward
-        cons_df.to_csv(outdir+'consumption forecast_{}_{}.csv'.format(rcp, switch))
-        pp.to_csv(outdir+'production_per_well_year_{}_{}.csv'.format(rcp, switch))
-        prices.to_csv(outdir+"prices_{}_{}.csv".format(rcp, switch))
-        mp.to_csv(outdir+"production_{}_{}.csv".format(rcp, switch))
-    except: 
-        print('open csv could not save results')
+    # try: 
+    #     finance.to_csv(outdir+'finance_{}_{}.csv'.format(rcp, switch))
+    #     fiscal.to_csv(outdir+"fiscal_{}_{}.csv".format(rcp, switch))
+    #     cc.to_csv(outdir+"us_capex_{}_{}.csv".format(rcp, switch))
+    #     cons.to_csv(outdir+"consumption_{}_{}.csv".format(rcp, switch))
+    #     exports.to_csv(outdir+"exports_{}_{}.csv".format(rcp, switch))
+    #     macro_inputs.to_csv(outdir+"macro_inputs_{}_{}.csv".format(rcp, switch))
+    #     #note this value is about 10k ktoe below minem for 2020 because it excludes own consumption. Could add to match + keep same going forward
+    #     cons_df.to_csv(outdir+'consumption forecast_{}_{}.csv'.format(rcp, switch))
+    #     pp.to_csv(outdir+'production_per_well_year_{}_{}.csv'.format(rcp, switch))
+    #     prices.to_csv(outdir+"prices_{}_{}.csv".format(rcp, switch))
+    #     mp.to_csv(outdir+"production_{}_{}.csv".format(rcp, switch))
+    # except: 
+    #     print('open csv could not save results')
 
-    return npv_gdp, npv_unsub_gdp, total_tb_gdp, total_ft_gdp, wells_total, gdp_npv_conv_gas,gdp_npv_conv_oil,gdp_npv_unconv_gas,gdp_npv_unconv_oil, ft_npv_conv_gas, ft_npv_conv_oil, ft_npv_unconv_gas, ft_npv_unconv_oil
+    return npv_gdp, npv_unsub_gdp,total_tb_gdp, total_ft_gdp, wells_total, gdp_npv_conv_gas,gdp_npv_conv_oil,gdp_npv_unconv_gas,gdp_npv_unconv_oil, ft_npv_conv_gas, ft_npv_conv_oil, ft_npv_unconv_gas, ft_npv_unconv_oil, fiscal_td, exports
 
-# ##run macro scenarios - domestic price remains subsidized, incentives for unconventional oil and gas  
+if __name__ == "__main__":
+    start_time = time.time()
+    ema_logging.log_to_stderr(level=ema_logging.INFO)
+    model = Model("VacaMuerta",function=VacaMuerta)
 
-#base - continued demand   
+    model.uncertainties = [CategoricalParameter('rcp',['CURR','1.5']), #emissions pathway
+                            CategoricalParameter('model',['GCAM','POLES','WB','MESSAGE','REMIND']),
+                            RealParameter("discount",.03, .09), #price elasticity of supply - oil 
+                            #RealParameter('T_bond_rate',0.0,.12), #US treasury bond rate
+                            #RealParameter('arg_sov_risk',0.0,.12), #argentina sovereign risk
+                            #RealParameter('opp_cost_own_finance',0.02,.2),#opportunity cost of own finance
+                            #RealParameter('share_own_capital',.0,1.), #share of own capital invested
+                            #RealParameter('opp_cost_debt',.0,.15), #opportunity cost of own debt
+                            RealParameter("pes_oil",.6, 1.4), #price elasticity of supply - oil 
+                            RealParameter("pes_gas",0.59, 1.2), #price elasticity of supply - gas                 
+                            # IntegerParameter("l",2, 20), #lag in price elasticity response
+                            # RealParameter("t_rate_gas",-.05, 0.05), #transition rate towards gas 
+                            # RealParameter("t_rate_oil",-.05, 0.05), #transition rate towards oil
+                            RealParameter("t_rate_e",-.05, .05), #transition rate towards electricity
+                            RealParameter("us_capex_gas",3000000, 12000000), #Cost of upstream capex expenditure 
+                            RealParameter("us_capex_oil",3000000, 12000000), #Cost of upstream capex expenditure 
+                            RealParameter("m",2000, 25000), #cost of downstream gas capital expenditure
+                            RealParameter("oil_opex",1, 20), #operations costs for gas invetments 
+                            RealParameter("gas_opex",1, 20), #operations costs for gas invetments 
+                            RealParameter("conv_start_gr_gas", 0,.8),#growth rate in onventional oil and gas starts
+                            RealParameter("conv_start_gr_oil", 0,.8),#growth rate in onventional oil and gas starts
+                            RealParameter("conv_prod_decline_end_gas", 0,.12),#exogenous production decline 
+                            RealParameter("conv_prod_decline_end_oil", 0,.12),#exogenous production decline 
+                            RealParameter("unconv_prod_decline_end_gas", 0,.12), #exogenous production decline in response to decarbonization
+                            RealParameter("unconv_prod_decline_end_oil", 0,.12), #exogenous production decline in response to decarbonization
+                            IntegerParameter("well_life",10 ,35), #expected lifetime of an active well
+                            # RealParameter("gas_ex_cap_start",1905.0, 1905.0), #Initial limits on volume of oil exports
+                            #RealParameter("gas_export_dem_start",0.0, 1.0), #Initial limits on volume of gas exports
+                            #RealParameter("oil_export_dem_start",0.0, 1.0), #Initial limits on volume of oil exports
+                            RealParameter("gas_export_dem_end",0.0 ,1.0), #final level of export demand internationally
+                            RealParameter("oil_export_dem_end",0.0 ,1.0), #final level of export demand internationally
+                            IntegerParameter("gas_demand_decline_speed",5 ,30),#years over which international demand for oil declines
+                            IntegerParameter("oil_demand_decline_speed",5 ,30),#years over which international demand for oil declines
+                            # RealParameter("oil_responsiveness",0.0, 1.0), #sensitivity of prices to to stock var
+                            # RealParameter("gas_responsiveness",0.0, 1.0), #sensitivity of prices to to stock var
+                            ]      
 
-mp2050_075 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = 'CURR', switch = 'pessimistic_075',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
-    l= 10.0, t_rate_gas = 0.00, t_rate_oil = 0.00, t_rate_e  = .02,
-    us_capex_gas = 10000000, us_capex_oil = 11500000, 
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 1.0, oil_export_dem_end = 1.0, gas_demand_decline_speed = 20, oil_demand_decline_speed = 20, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.00, unconv_prod_decline_end_oil =.00,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .075, foreign_capex_share = .125, profit_tax_rate =.3)  
+    model.outcomes = [ScalarOutcome("npv_gdp"),
+                       ScalarOutcome("npv_unsub_gdp"),
+                       ScalarOutcome("total_tb_gdp"),
+                       ScalarOutcome("total_ft_gdp"),
+                       ScalarOutcome("wells_total"), 
+                       ScalarOutcome("gdp_npv_conv_gas"),
+                       ScalarOutcome("gdp_npv_conv_oil"),
+                       ScalarOutcome("gdp_npv_unconv_gas"),  
+                       ScalarOutcome("gdp_npv_unconv_oil"), 
+                       ScalarOutcome("gdp_ft_conv_gas"),
+                       ScalarOutcome("gdp_ft_conv_oil"),
+                       ScalarOutcome("gdp_ft_unconv_gas"),  
+                       ScalarOutcome("gdp_ft_unconv_oil"),
+                       ArrayOutcome("fiscal_td"),
+                       ArrayOutcome("exports")
+                    #    TimeSeriesOutcome('trade_out'),
+                    #    TimeSeriesOutcome('prod_conv_out'),
+                    #    TimeSeriesOutcome('prod_unconv_out'),
+                    #    TimeSeriesOutcome('cons_out')
+                      ] 
+    model.levers =  [
+                    RealParameter("public_ds_capex_share",0.0, 1.0), #share of downstream capital provided by public
+                    RealParameter("foreign_capex_share",0.0, 1.0), #sensitivity of prices to to stock var
+                    RealParameter("profit_tax_rate",0.0, .5),
+                    RealParameter("share_covered",0.0, .70), #Wshare of production supported by production subsidies
+                    RealParameter("prod_subsidy_p_ratio",1.0, 2.0), #production subsidy premium over domestic price
+                    RealParameter("royalty_rate_gas",.0, .30), #royalty rate for domestic production
+                    RealParameter("duty_rate_gas",.0, .30), #maximum export duty rate paid
+                    RealParameter("royalty_rate_oil",.0, .30), #royalty rate for domestic production
+                    RealParameter("duty_rate_oil",.0, .30), #maximum export duty rate paid
+                    RealParameter("price_threshold_gas",4.0,6.0), #price threshold for payment of export duties
+                    RealParameter("price_threshold_oil",50, 70),  #price threshold for payment of export duties
+                    RealParameter("price_floor_gas",1.5, 4.0), #price floor for payment of export duties
+                    RealParameter("price_floor_oil",35, 50), #price floor for payment of export duties
+                    RealParameter('cons_wedge_end_gas',.5,5.0), #Wedge between domestic producer prices and domestic producer prices
+                    RealParameter("cons_wedge_end_oil",.5,5.0), #Wedge between domestic producer prices and domestic producer prices
+                    RealParameter('intl_wedge_end_gas',.5,5.0), #Wedge between international producer prices and domestic producer prices
+                    RealParameter("intl_wedge_end_oil",.5,5.0), #Wedge between international producer prices and domestic producer prices
+                    RealParameter("a_gas_trans",0.0, .06),  #energy efficiency improvement rate transport gas 
+                    RealParameter("a_gas_res",0.0, .06),  #energy efficiency improvement rate residential gas 
+                    RealParameter("a_gas_ind",0.0, .06),  #energy efficiency improvement rate industrial gas  
+                    RealParameter("a_oil_trans",0.0, .06),  #energy efficiency improvement rate transport oil 
+                    RealParameter("a_oil_res",0.0, .06),  #energy efficiency improvement rate residential oil  
+                    RealParameter("a_oil_ind",0.0, .06),  #energy efficiency improvement rate industrial oil  
+                    RealParameter("a_el_trans",0.0, .06),  #energy efficiency improvement rate residential electricity 
+                    RealParameter("a_el_res",0.0, .06), #energy efficiency improvement rate residential electricity 
+                    RealParameter("a_el_ind",0.0, .06), #energy efficiency improvement rate industrial electricity
+                    RealParameter("gas_ex_cap_end",1905 , 42795), #final level of export demand internationally
+                    IntegerParameter("gas_ex_cap_increase",1, 30), #final level of export demand internationally
+                    RealParameter("oil_ex_cap_end",33215 ,76650),#years over which international demand for oil declines
+                    IntegerParameter("oil_ex_cap_increase",1 ,30), #final level of export demand internationally
+    ]
 
-mp2050_15_075 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'optimistic_075',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = 0.0, t_rate_oil = .0, t_rate_e  = .05,
-    us_capex_gas = 10000000, us_capex_oil = 11500000, 
-    m = 9542*4, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146),prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, 
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000,public_ds_capex_share = 0.67, 
-    export_share_oil = 0.18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 4631, gas_ex_cap_increase = 3,oil_ex_cap_start= 33215, oil_ex_cap_end= 33215, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.05, unconv_prod_decline_end_oil =.045,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = .8, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = .8,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =.8, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = .8, discount =.075, foreign_capex_share = .125, profit_tax_rate =.3)
+    policies = [Policy('1',public_ds_capex_share=0.67,share_covered=0.17,prod_subsidy_p_ratio=1.3,gas_ex_cap_end=110000,gas_ex_cap_increase=30,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.12,duty_rate_gas=0.08,royalty_rate_oil=0.12,duty_rate_oil=0.08,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.3,cons_wedge_end_gas=3.5,cons_wedge_end_oil=1.5,intl_wedge_end_gas=2,intl_wedge_end_oil=1.5,a_gas_trans=0.03,a_gas_res=0.03,a_gas_ind=0.03,a_oil_trans=0.03,a_oil_res=0.03,a_oil_ind=0.03,a_el_trans=0.03,a_el_res=0.03,a_el_ind=0.03),
+                Policy('2',public_ds_capex_share=0.67,share_covered=0.17,prod_subsidy_p_ratio=1.3,gas_ex_cap_end=110000,gas_ex_cap_increase=30,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.05,duty_rate_gas=0,royalty_rate_oil=0.05,duty_rate_oil=0,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.15,cons_wedge_end_gas=3.5,cons_wedge_end_oil=1.5,intl_wedge_end_gas=2,intl_wedge_end_oil=1.5,a_gas_trans=0.03,a_gas_res=0.03,a_gas_ind=0.03,a_oil_trans=0.03,a_oil_res=0.03,a_oil_ind=0.03,a_el_trans=0.03,a_el_res=0.03,a_el_ind=0.03),
+                Policy('5',public_ds_capex_share=0.67,share_covered=0.17,prod_subsidy_p_ratio=1.3,gas_ex_cap_end=110000,gas_ex_cap_increase=30,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.12,duty_rate_gas=0.08,royalty_rate_oil=0.12,duty_rate_oil=0.08,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.3,cons_wedge_end_gas=1,cons_wedge_end_oil=1,intl_wedge_end_gas=1,intl_wedge_end_oil=1,a_gas_trans=0.03,a_gas_res=0.03,a_gas_ind=0.03,a_oil_trans=0.03,a_oil_res=0.03,a_oil_ind=0.03,a_el_trans=0.03,a_el_res=0.03,a_el_ind=0.03),
+                Policy('6',public_ds_capex_share=0.67,share_covered=0.17,prod_subsidy_p_ratio=1.3,gas_ex_cap_end=110000,gas_ex_cap_increase=30,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.05,duty_rate_gas=0,royalty_rate_oil=0.05,duty_rate_oil=0,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.15,cons_wedge_end_gas=1,cons_wedge_end_oil=1,intl_wedge_end_gas=1,intl_wedge_end_oil=1,a_gas_trans=0.03,a_gas_res=0.03,a_gas_ind=0.03,a_oil_trans=0.03,a_oil_res=0.03,a_oil_ind=0.03,a_el_trans=0.03,a_el_res=0.03,a_el_ind=0.03),
+                Policy('9',public_ds_capex_share=0.67,share_covered=0.17,prod_subsidy_p_ratio=1.3,gas_ex_cap_end=110000,gas_ex_cap_increase=30,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.12,duty_rate_gas=0.08,royalty_rate_oil=0.12,duty_rate_oil=0.08,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.3,cons_wedge_end_gas=3.5,cons_wedge_end_oil=1.5,intl_wedge_end_gas=2,intl_wedge_end_oil=1.5,a_gas_trans=0.005,a_gas_res=0.005,a_gas_ind=0.005,a_oil_trans=0.005,a_oil_res=0.005,a_oil_ind=0.005,a_el_trans=0.005,a_el_res=0.005,a_el_ind=0.005),
+                Policy('10',public_ds_capex_share=0.67,share_covered=0.17,prod_subsidy_p_ratio=1.3,gas_ex_cap_end=110000,gas_ex_cap_increase=30,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.05,duty_rate_gas=0,royalty_rate_oil=0.05,duty_rate_oil=0,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.15,cons_wedge_end_gas=3.5,cons_wedge_end_oil=1.5,intl_wedge_end_gas=2,intl_wedge_end_oil=1.5,a_gas_trans=0.005,a_gas_res=0.005,a_gas_ind=0.005,a_oil_trans=0.005,a_oil_res=0.005,a_oil_ind=0.005,a_el_trans=0.005,a_el_res=0.005,a_el_ind=0.005),
+                Policy('13',public_ds_capex_share=0.67,share_covered=0.17,prod_subsidy_p_ratio=1.3,gas_ex_cap_end=110000,gas_ex_cap_increase=30,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.12,duty_rate_gas=0.08,royalty_rate_oil=0.12,duty_rate_oil=0.08,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.3,cons_wedge_end_gas=1,cons_wedge_end_oil=1,intl_wedge_end_gas=1,intl_wedge_end_oil=1,a_gas_trans=0.005,a_gas_res=0.005,a_gas_ind=0.005,a_oil_trans=0.005,a_oil_res=0.005,a_oil_ind=0.005,a_el_trans=0.005,a_el_res=0.005,a_el_ind=0.005),
+                Policy('14',public_ds_capex_share=0.67,share_covered=0.17,prod_subsidy_p_ratio=1.3,gas_ex_cap_end=110000,gas_ex_cap_increase=30,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.05,duty_rate_gas=0,royalty_rate_oil=0.05,duty_rate_oil=0,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.15,cons_wedge_end_gas=1,cons_wedge_end_oil=1,intl_wedge_end_gas=1,intl_wedge_end_oil=1,a_gas_trans=0.005,a_gas_res=0.005,a_gas_ind=0.005,a_oil_trans=0.005,a_oil_res=0.005,a_oil_ind=0.005,a_el_trans=0.005,a_el_res=0.005,a_el_ind=0.005),
+                Policy('19',public_ds_capex_share=0,share_covered=0,prod_subsidy_p_ratio=1,gas_ex_cap_end=4631,gas_ex_cap_increase=3,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.12,duty_rate_gas=0.08,royalty_rate_oil=0.12,duty_rate_oil=0.08,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.3,cons_wedge_end_gas=3.5,cons_wedge_end_oil=1.5,intl_wedge_end_gas=2,intl_wedge_end_oil=1.5,a_gas_trans=0.03,a_gas_res=0.03,a_gas_ind=0.03,a_oil_trans=0.03,a_oil_res=0.03,a_oil_ind=0.03,a_el_trans=0.03,a_el_res=0.03,a_el_ind=0.03),
+                Policy('20',public_ds_capex_share=0,share_covered=0,prod_subsidy_p_ratio=1,gas_ex_cap_end=4631,gas_ex_cap_increase=3,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.05,duty_rate_gas=0,royalty_rate_oil=0.05,duty_rate_oil=0,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.15,cons_wedge_end_gas=3.5,cons_wedge_end_oil=1.5,intl_wedge_end_gas=2,intl_wedge_end_oil=1.5,a_gas_trans=0.03,a_gas_res=0.03,a_gas_ind=0.03,a_oil_trans=0.03,a_oil_res=0.03,a_oil_ind=0.03,a_el_trans=0.03,a_el_res=0.03,a_el_ind=0.03),
+                Policy('23',public_ds_capex_share=0,share_covered=0,prod_subsidy_p_ratio=1,gas_ex_cap_end=4631,gas_ex_cap_increase=3,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.12,duty_rate_gas=0.08,royalty_rate_oil=0.12,duty_rate_oil=0.08,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.3,cons_wedge_end_gas=1,cons_wedge_end_oil=1,intl_wedge_end_gas=1,intl_wedge_end_oil=1,a_gas_trans=0.03,a_gas_res=0.03,a_gas_ind=0.03,a_oil_trans=0.03,a_oil_res=0.03,a_oil_ind=0.03,a_el_trans=0.03,a_el_res=0.03,a_el_ind=0.03),
+                Policy('24',public_ds_capex_share=0,share_covered=0,prod_subsidy_p_ratio=1,gas_ex_cap_end=4631,gas_ex_cap_increase=3,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.05,duty_rate_gas=0,royalty_rate_oil=0.05,duty_rate_oil=0,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.15,cons_wedge_end_gas=1,cons_wedge_end_oil=1,intl_wedge_end_gas=1,intl_wedge_end_oil=1,a_gas_trans=0.03,a_gas_res=0.03,a_gas_ind=0.03,a_oil_trans=0.03,a_oil_res=0.03,a_oil_ind=0.03,a_el_trans=0.03,a_el_res=0.03,a_el_ind=0.03),
+                Policy('27',public_ds_capex_share=0,share_covered=0,prod_subsidy_p_ratio=1,gas_ex_cap_end=4631,gas_ex_cap_increase=3,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.12,duty_rate_gas=0.08,royalty_rate_oil=0.12,duty_rate_oil=0.08,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.3,cons_wedge_end_gas=3.5,cons_wedge_end_oil=1.5,intl_wedge_end_gas=2,intl_wedge_end_oil=1.5,a_gas_trans=0.005,a_gas_res=0.005,a_gas_ind=0.005,a_oil_trans=0.005,a_oil_res=0.005,a_oil_ind=0.005,a_el_trans=0.005,a_el_res=0.005,a_el_ind=0.005),
+                Policy('28',public_ds_capex_share=0,share_covered=0,prod_subsidy_p_ratio=1,gas_ex_cap_end=4631,gas_ex_cap_increase=3,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.05,duty_rate_gas=0,royalty_rate_oil=0.05,duty_rate_oil=0,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.15,cons_wedge_end_gas=3.5,cons_wedge_end_oil=1.5,intl_wedge_end_gas=2,intl_wedge_end_oil=1.5,a_gas_trans=0.005,a_gas_res=0.005,a_gas_ind=0.005,a_oil_trans=0.005,a_oil_res=0.005,a_oil_ind=0.005,a_el_trans=0.005,a_el_res=0.005,a_el_ind=0.005),
+                Policy('31',public_ds_capex_share=0,share_covered=0,prod_subsidy_p_ratio=1,gas_ex_cap_end=4631,gas_ex_cap_increase=3,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.12,duty_rate_gas=0.08,royalty_rate_oil=0.12,duty_rate_oil=0.08,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.3,cons_wedge_end_gas=1,cons_wedge_end_oil=1,intl_wedge_end_gas=1,intl_wedge_end_oil=1,a_gas_trans=0.005,a_gas_res=0.005,a_gas_ind=0.005,a_oil_trans=0.005,a_oil_res=0.005,a_oil_ind=0.005,a_el_trans=0.005,a_el_res=0.005,a_el_ind=0.005),
+                Policy('32',public_ds_capex_share=0,share_covered=0,prod_subsidy_p_ratio=1,gas_ex_cap_end=4631,gas_ex_cap_increase=3,oil_ex_cap_end=76650,oil_ex_cap_increase=30,royalty_rate_gas=0.05,duty_rate_gas=0,royalty_rate_oil=0.05,duty_rate_oil=0,price_threshold_gas=5,price_threshold_oil=60,price_floor_gas=3.75,price_floor_oil=45,profit_tax_rate=0.15,cons_wedge_end_gas=1,cons_wedge_end_oil=1,intl_wedge_end_gas=1,intl_wedge_end_oil=1,a_gas_trans=0.005,a_gas_res=0.005,a_gas_ind=0.005,a_oil_trans=0.005,a_oil_res=0.005,a_oil_ind=0.005,a_el_trans=0.005,a_el_res=0.005,a_el_ind=0.005)
+]
 
-mp2050_lock_075 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'lock_in_075',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = -0.00, t_rate_oil = -0.00, t_rate_e  = .02,
-    us_capex_gas = 10000000, us_capex_oil = 11500000, 
-    m = 9542*4, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.02, unconv_prod_decline_end_oil =.02,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .075,foreign_capex_share = .125,profit_tax_rate =.3)  
+    print("OUTPUTS AND UNCERTAINTIES LOADED")
+    with MultiprocessingEvaluator(model) as evaluator:
+        #  warnings.filterwarnings('ignore', 'ImportWarning', )
+         results = perform_experiments(model, num_experiments, policies=policies, reporting_interval=1,
+                                       evaluator=evaluator)
 
-mp2050_06 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = 'CURR', switch = 'pessimistic_06',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
-    l= 10.0, t_rate_gas = 0.00, t_rate_oil = 0.00, t_rate_e  = .02,
-    us_capex_gas = 7100000, us_capex_oil = 7100000, 
-    m = 9542, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 1.0, oil_export_dem_end = 1.0, gas_demand_decline_speed = 20, oil_demand_decline_speed = 20, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.00, unconv_prod_decline_end_oil =.00,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .06,foreign_capex_share = .125,profit_tax_rate =.3)  
+    print("EXPERIMENTS")
+    experiments, outcomes = results
 
-mp2050_15_06 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'optimistic_06',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = 0.0, t_rate_oil = .0, t_rate_e  = .05,
-    us_capex_gas = 7100000, us_capex_oil = 7100000, 
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146),  prod_subsidy_p_ratio=1.3,
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, 
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000,public_ds_capex_share = 0.67, 
-    export_share_oil = 0.18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 4631, gas_ex_cap_increase = 3,oil_ex_cap_start= 33215, oil_ex_cap_end= 33215, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.05, unconv_prod_decline_end_oil =.045,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = .8, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = .8,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =.8, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = .8, discount =.06,foreign_capex_share = .125,profit_tax_rate =.3)
+    df =  reshape_array(outcomes["fiscal_td"])
 
-mp2050_lock_06 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'lock_in_06',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = -0.00, t_rate_oil = -0.00, t_rate_e  = .02,
-    us_capex_gas = 7100000, us_capex_oil = 7100000, 
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.02, unconv_prod_decline_end_oil =.02,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .06,foreign_capex_share = .125,profit_tax_rate =.3)
+    exports = pd.DataFrame(reshape_array(outcomes["exports"]))
+    exports.to_csv(outdir+"physical ts outcomes_2.csv")
 
-mp2050_045 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = 'CURR', switch = 'pessimistic_045',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
-    l= 10.0, t_rate_gas = 0.00, t_rate_oil = 0.00, t_rate_e  = .02,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542, oil_opex = (5.0/.000146),  gas_opex = (5./.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .05, royalty_rate_oil = .05, duty_rate_gas = .0, duty_rate_oil = .0, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 1.0, oil_export_dem_end = 1.0, gas_demand_decline_speed = 20, oil_demand_decline_speed = 20, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.00, unconv_prod_decline_end_oil =.00,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .045,foreign_capex_share = .25,profit_tax_rate =.15)  
+    trade = pd.DataFrame(df)
+    trade.to_csv(outdir+"fiscal ts outcomes_2.csv")
+    del outcomes['fiscal_td']
+    del outcomes['exports']
 
-mp2050_15_045 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'optimistic_045',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = 0.0, t_rate_oil = .0, t_rate_e  = .05,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146),  prod_subsidy_p_ratio=1.3,
-    share_covered = .17, royalty_rate_gas = .05, royalty_rate_oil = .05, duty_rate_gas = .0, duty_rate_oil = .0, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, 
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000,public_ds_capex_share = 0.67, 
-    export_share_oil = 0.18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 4631, gas_ex_cap_increase = 3,oil_ex_cap_start= 33215, oil_ex_cap_end= 33215, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.05, unconv_prod_decline_end_oil =.045,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = .8, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = .8,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =.8, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = .8, discount =.045,foreign_capex_share = .25,profit_tax_rate =.15)
-
-mp2050_lock_045 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'lock_in_045',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = -0.00, t_rate_oil = -0.00, t_rate_e  = .02,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .05, royalty_rate_oil = .05, duty_rate_gas = .0, duty_rate_oil = .00, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.02, unconv_prod_decline_end_oil =.02,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .045,foreign_capex_share = .25,profit_tax_rate =.15)  
-
-# # #save high level summary results for all 4 scenarios
-# print(mp2050)
-
-out = pd.DataFrame([mp2050_075, mp2050_15_075, mp2050_lock_075,mp2050_06, mp2050_15_06, mp2050_lock_06,mp2050_045, mp2050_15_045, mp2050_lock_045])
-out.columns = ['Total NPV GDP', 'Total NPV GDP No transfers','Total TB GDP','Total FT GDP', 'Total Wells', 'NPV GDP Conv. Gas', 'NPV GDP Conv. Oil', 'NPV GDP Unconv. Gas', 'NPV GDP Unconv. Oil','FT GDP Conv. Gas', 'FT GDP Conv. Oil', 'FT GDP Unconv. Gas', 'FT GDP Unconv. Oil']
-# out['Scenario'] = ['Current Policies', "1_5 degrees",'Lock In', "Lock-In Electrification"]
-out['Scenario'] = ['Current Policies 7.5', "1_5 Degrees 7.5","Lock-in 7.5",'Current Policies 6', "1_5 Degrees 6","Lock-in 6", 'Current Policies 4.5', "1_5 Degrees 4.5","Lock-in 4.5"]
-print(out)
-out.to_csv(outdir+'summary results.csv')
-
-# #three only for testing
-# out = pd.DataFrame([mp2050_06, mp2050_15_06, mp2050_lock_06])
-# out.columns = ['Total NPV GDP', 'Total NPV GDP No transfers','Total TB GDP','Total FT GDP', 'Total Wells', 'NPV GDP Conv. Gas', 'NPV GDP Conv. Oil', 'NPV GDP Unconv. Gas', 'NPV GDP Unconv. Oil','FT GDP Conv. Gas', 'FT GDP Conv. Oil', 'FT GDP Unconv. Gas', 'FT GDP Unconv. Oil']
-# # out['Scenario'] = ['Current Policies', "1_5 degrees",'Lock In', "Lock-In Electrification"]
-# out['Scenario'] = ['Current Policies 6', "1_5 Degrees 6","Lock-in 6"]
-# print(out)
-# out.to_csv(outdir+'summary results.csv')
-
-#run with tax rate changes separate and .045 only 
-
-#royalties changed only 
-mp2050_045_rr = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = 'CURR', switch = 'pessimistic_045_rr',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
-    l= 10.0, t_rate_gas = 0.00, t_rate_oil = 0.00, t_rate_e  = .02,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .05, royalty_rate_oil = .05, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 1.0, oil_export_dem_end = 1.0, gas_demand_decline_speed = 20, oil_demand_decline_speed = 20, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.00, unconv_prod_decline_end_oil =.00,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .045,foreign_capex_share = .25,
-    profit_tax_rate =.3)  
-
-mp2050_15_045_rr = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'optimistic_045_rr',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = 0.0, t_rate_oil = .0, t_rate_e  = .05,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3,
-    share_covered = .17, royalty_rate_gas = .05, royalty_rate_oil = .05, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, 
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000,public_ds_capex_share = 0.67, 
-    export_share_oil = 0.18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 4631, gas_ex_cap_increase = 3,oil_ex_cap_start= 33215, oil_ex_cap_end= 33215, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.05, unconv_prod_decline_end_oil =.045,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = .8, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = .8,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =.8, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = .8, discount =.045,foreign_capex_share = .25,
-    profit_tax_rate =.30)
-
-mp2050_lock_045_rr = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'lock_in_045_rr',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = -0.00, t_rate_oil = -0.00, t_rate_e  = .02,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .05, royalty_rate_oil = .05, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.02, unconv_prod_decline_end_oil =.02,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .045,foreign_capex_share = .25,
-    profit_tax_rate =.30)  
+    outcomes2 = pd.DataFrame(outcomes)
+    experiments2 = pd.DataFrame(experiments)
+    experiments2.to_csv(outdir+"vm_experiments_2.csv")
+    outcomes2.to_csv(outdir+"vm_outcomes_2.csv")
 
 
-#export duties changed only
-mp2050_045_ed = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = 'CURR', switch = 'pessimistic_045_ed',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
-    l= 10.0, t_rate_gas = 0.00, t_rate_oil = 0.00, t_rate_e  = .02,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .0, duty_rate_oil = .0, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 1.0, oil_export_dem_end = 1.0, gas_demand_decline_speed = 20, oil_demand_decline_speed = 20, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.00, unconv_prod_decline_end_oil =.00,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .045,foreign_capex_share = .25,
-    profit_tax_rate =.3)  
+    policies = [Policy('no policy', royalty_rate_gas =.3),
+            Policy('no gas royalties', royalty_rate_gas =0.0)] 
 
-mp2050_15_045_ed = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'optimistic_045_ed',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = 0.0, t_rate_oil = .0, t_rate_e  = .05,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146),  prod_subsidy_p_ratio=1.3,
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .0, duty_rate_oil = .0, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, 
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000,public_ds_capex_share = 0.67, 
-    export_share_oil = 0.18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 4631, gas_ex_cap_increase = 3,oil_ex_cap_start= 33215, oil_ex_cap_end= 33215, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.05, unconv_prod_decline_end_oil =.045,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = .8, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = .8,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =.8, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = .8, discount =.045,foreign_capex_share = .25,
-    profit_tax_rate =.30)
+    fig, axes = pairs_plotting.pairs_scatter(experiments, outcomes, group_by='policy',
+                                            legend=False)
+    fig.set_size_inches(16,16)
+    plt.savefig(outdir+'pairs_2.png', bbox_inches="tight")
+    plt.clf()
 
-mp2050_lock_045_ed = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'lock_in_045_ed',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = -0.00, t_rate_oil = -0.00, t_rate_e  = .02,
-    us_capex_gas = 5000000, us_capex_oil = 5000000,
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .0, duty_rate_oil = .0, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.02, unconv_prod_decline_end_oil =.02,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .045,foreign_capex_share = .25,
-    profit_tax_rate =.30)  
+    #feature scoring
+    from ema_workbench.analysis import feature_scoring
 
-#profit taxes changed only
+    x = experiments
+    y = outcomes
 
-mp2050_045_pt = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = 'CURR', switch = 'pessimistic_045_pt',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
-    l= 10.0, t_rate_gas = 0.00, t_rate_oil = 0.00, t_rate_e  = .02,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542, oil_opex = (5.0/.000146),  gas_opex = (2.8/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 1.0, oil_export_dem_end = 1.0, gas_demand_decline_speed = 20, oil_demand_decline_speed = 20, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.00, unconv_prod_decline_end_oil =.00,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .045,foreign_capex_share = .25,
-    profit_tax_rate =.15)  
-
-mp2050_15_045_pt = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'optimistic_045_pt',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = 0.0, t_rate_oil = .0, t_rate_e  = .05,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146),  prod_subsidy_p_ratio=1.3,
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, 
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000,public_ds_capex_share = 0.67, 
-    export_share_oil = 0.18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 4631, gas_ex_cap_increase = 3,oil_ex_cap_start= 33215, oil_ex_cap_end= 33215, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.05, unconv_prod_decline_end_oil =.045,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = .8, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = .8,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =.8, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = .8, discount =.045,foreign_capex_share = .25,
-    profit_tax_rate =.15)
-
-mp2050_lock_045_pt = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'lock_in_045_pt',pes_oil = 1.2,pes_gas = .9,
-    a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
-    l= 10.0, t_rate_gas = -0.00, t_rate_oil = -0.00, t_rate_e  = .02,
-    us_capex_gas = 5000000, us_capex_oil = 5000000, 
-    m = 9542*2, oil_opex = (5.0/.000146),  gas_opex = (5.0/.000146), prod_subsidy_p_ratio=1.3, 
-    share_covered = .17, royalty_rate_gas = .12, royalty_rate_oil = .12, duty_rate_gas = .08, duty_rate_oil = .08, 
-    price_threshold_gas = 5.0*39652.61, price_threshold_oil = 60.0*7330, price_floor_gas = 3.75*39652.61, price_floor_oil = 45.0*7330, public_ds_capex_share = 0.67,
-    T_bond_rate = .0245, arg_sov_risk = .0315, opp_cost_own_finance = .1029, share_own_capital =  .6803, opp_cost_debt =  .0312, GDP = 383100000000, 
-    export_share_oil = .18, export_share_gas =.0,  
-    gas_export_dem_start = 1.0, oil_export_dem_start = 1.0, gas_export_dem_end = 0.0, oil_export_dem_end = 0.0, gas_demand_decline_speed = 10, oil_demand_decline_speed = 10, 
-    gas_ex_cap_start = 1905, gas_ex_cap_end= 110000, gas_ex_cap_increase = 30,oil_ex_cap_start= 33215, oil_ex_cap_end= 76650, oil_ex_cap_increase = 3,
-    conv_start_gr_gas  = 0.0, conv_start_gr_oil  = 0.0, conv_prod_decline_start =.06, conv_prod_decline_end_gas =.06, conv_prod_decline_end_oil =.06, 
-    unconv_prod_decline_start =.00, unconv_prod_decline_end_gas =.02, unconv_prod_decline_end_oil =.02,
-    cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
-    intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .045,foreign_capex_share = .25,
-    profit_tax_rate =.15)  
-
-
-out = pd.DataFrame([mp2050_045_rr, mp2050_15_045_rr, mp2050_lock_045_rr,mp2050_045_ed, mp2050_15_045_ed, mp2050_lock_045_ed,mp2050_045_pt, mp2050_15_045_pt, mp2050_lock_045_pt])
-out.columns = ['Total NPV GDP', 'Total NPV GDP No transfers','Total TB GDP','Total FT GDP', 'Total Wells', 'NPV GDP Conv. Gas', 'NPV GDP Conv. Oil', 'NPV GDP Unconv. Gas', 'NPV GDP Unconv. Oil','FT GDP Conv. Gas', 'FT GDP Conv. Oil', 'FT GDP Unconv. Gas', 'FT GDP Unconv. Oil']
-# out['Scenario'] = ['Current Policies', "1_5 degrees",'Lock In', "Lock-In Electrification"]
-out['Scenario'] = ['Current Policies 4.5 - Low RR', "1_5 Degrees 4.5 - Low RR","Lock-in 4.5 - Low RR",'Current Policies 4.5 - Low ED', "1_5 Degrees 4.5 - Low ED","Lock-in 4.5 - Low ED", 'Current Policies 4.5 - Low PT', "1_5 Degrees 4.5 - Low PT","Lock-in 4.5 - Low PT"]
-print(out)
-out.to_csv(outdir+'summary results_tax changes only.csv')
+    fs = feature_scoring.get_feature_scores_all(x, y)
+    heatmap = sns.heatmap(fs, cmap='viridis', annot=True)
+    # plt.show()
+    plt.savefig(outdir+'feature_scoring_2.png', bbox_inches="tight")
+    end_time = time.time()
+    print(f'Runtime: {end_time-start_time}')
+    
