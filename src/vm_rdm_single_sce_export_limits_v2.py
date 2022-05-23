@@ -1153,6 +1153,7 @@ def VacaMuerta(yr0 = 2020,
 
 #base - continued demand   
 
+#taxes-high, ee-low, subsidies - high, esports high,prices high
 mp2050_075 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = 'CURR', switch = 'pessimistic_075',pes_oil = 1.2,pes_gas = .9,
     a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
     l= 10.0, t_rate_gas = 0.00, t_rate_oil = 0.00, t_rate_e  = .02,
@@ -1169,6 +1170,8 @@ mp2050_075 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = 'CURR',
     cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
     intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .075, foreign_capex_share = .125, profit_tax_rate =.3)  
 
+
+#taxes-high, ee-high, subsidies - high, esports-loww,prices low
 mp2050_15_075 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'optimistic_075',pes_oil = 1.2,pes_gas = .9,
     a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
     l= 10.0, t_rate_gas = 0.0, t_rate_oil = .0, t_rate_e  = .05,
@@ -1185,6 +1188,8 @@ mp2050_15_075 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5
     cons_wedge_start_gas = 1.5, cons_wedge_end_gas = .8, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = .8,
     intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =.8, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = .8, discount =.075, foreign_capex_share = .125, profit_tax_rate =.3)
 
+
+#taxes-high, ee-high, subsidies - high, esports high,prices high
 mp2050_lock_075 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'lock_in_075',pes_oil = 1.2,pes_gas = .9,
     a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
     l= 10.0, t_rate_gas = -0.00, t_rate_oil = -0.00, t_rate_e  = .02,
@@ -1249,6 +1254,8 @@ mp2050_lock_06 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.
     cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
     intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .06,foreign_capex_share = .125,profit_tax_rate =.3)
 
+
+#taxes-low, ee-low, subsidies - high, esports high,prices high
 mp2050_045 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = 'CURR', switch = 'pessimistic_045',pes_oil = 1.2,pes_gas = .9,
     a_gas_res = .005, a_oil_res = .005, a_el_res = .005 ,a_gas_ind = .005, a_oil_ind = .005,a_el_ind = .005,a_gas_trans = .005,a_oil_trans = .005,a_el_trans = .005,
     l= 10.0, t_rate_gas = 0.00, t_rate_oil = 0.00, t_rate_e  = .02,
@@ -1265,6 +1272,7 @@ mp2050_045 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = 'CURR',
     cons_wedge_start_gas = 1.5, cons_wedge_end_gas = 3.5, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = 1.5,
     intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =2, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = 1.5, discount = .045,foreign_capex_share = .25,profit_tax_rate =.15)  
 
+#taxes-low, ee-high, subsidies - high, esports low,prices low
 mp2050_15_045 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'optimistic_045',pes_oil = 1.2,pes_gas = .9,
     a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
     l= 10.0, t_rate_gas = 0.0, t_rate_oil = .0, t_rate_e  = .05,
@@ -1281,6 +1289,7 @@ mp2050_15_045 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5
     cons_wedge_start_gas = 1.5, cons_wedge_end_gas = .8, cons_wedge_start_oil = 1.5, cons_wedge_end_oil = .8,
     intl_wedge_start_gas = 1.5,  intl_wedge_end_gas =.8, intl_wedge_start_oil = 1.5, intl_wedge_end_oil = .8, discount =.045,foreign_capex_share = .25,profit_tax_rate =.15)
 
+#taxes-low, ee-high, subsidies - high, esports high,prices high
 mp2050_lock_045 = VacaMuerta(yr0 = 2020, final_yr = 2050, model = 'WB', rcp = '1.5', switch = 'lock_in_045',pes_oil = 1.2,pes_gas = .9,
     a_gas_res = .03, a_oil_res = .03, a_el_res = .03, a_gas_ind = .03,a_oil_ind = .03,a_el_ind = .03,a_gas_trans = .03,a_oil_trans = .03,a_el_trans = .03,
     l= 10.0, t_rate_gas = -0.00, t_rate_oil = -0.00, t_rate_e  = .02,
